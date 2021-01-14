@@ -27,6 +27,7 @@
 #include <stdio.h>
 #include "chartypes.h"
 #include "bashtypes.h"
+#include <pthread.h>
 #if !defined (_MINIX) && defined (HAVE_SYS_FILE_H)
 #  include <sys/file.h>
 #endif
@@ -4232,6 +4233,8 @@ execute_simple_command (simple_command, pipe_in, pipe_out, async, fds_to_close)
      int pipe_in, pipe_out, async;
      struct fd_bitmap *fds_to_close;
 {
+  pid_t current = getpid();
+  printf("[%d] execute_simple_command entry pipe_in = %d, pipe_out = %d\n", current, pipe_in, pipe_out);
   WORD_LIST *words, *lastword;
   char *command_line, *lastarg, *temp;
   int first_word_quoted, result, builtin_is_special, already_forked, dofork;
@@ -4306,7 +4309,7 @@ execute_simple_command (simple_command, pipe_in, pipe_out, async, fds_to_close)
 
   if (dofork)
     {
-      char *p;
+      char *p = NULL;
 
       /* Do this now, because execute_disk_command will do it anyway in the
 	 vast majority of cases. */
@@ -4315,8 +4318,14 @@ execute_simple_command (simple_command, pipe_in, pipe_out, async, fds_to_close)
       /* Don't let a DEBUG trap overwrite the command string to be saved with
 	 the process/job associated with this child. */
       fork_flags = async ? FORK_ASYNC : 0;
-      if (make_child (p = savestring (the_printed_command_except_trap), fork_flags) == 0)
+      printf("[%d] father process pipe_in = %d, pipe_out = %d\n", getpid(), pipe_in, pipe_out);
+      p = savestring (the_printed_command_except_trap);
+      pthread_t tid = make_child_without_fork (p, fork_flags, simple_command->words, pipe_in, pipe_out);
+      if (tid == 0)
 	{
+    	  // child
+	  pid_t child = getpid();
+	  printf("[%d] child_process will execute: %s\n",child, p);
 	  already_forked = 1;
 	  cmdflags |= CMD_NO_FORK;
 
@@ -4335,7 +4344,7 @@ execute_simple_command (simple_command, pipe_in, pipe_out, async, fds_to_close)
 	  /* If we fork because of an input pipe, note input pipe for later to
 	     inhibit async commands from redirecting stdin from /dev/null */
 	  stdin_redir |= pipe_in != NO_PIPE;
-
+     	  printf("[%d] child process pipe_in = %d, pipe_out = %d\n", child, pipe_in, pipe_out);
 	  do_piping (pipe_in, pipe_out);
 	  pipe_in = pipe_out = NO_PIPE;
 #if defined (COPROCESS_SUPPORT)
@@ -4353,10 +4362,14 @@ execute_simple_command (simple_command, pipe_in, pipe_out, async, fds_to_close)
 	}
       else
 	{
+	  printf("[%d] exec simple father process after make child\n", getpid() );
 	  /* Don't let simple commands that aren't the last command in a
 	     pipeline change $? for the rest of the pipeline (or at all). */
 	  if (pipe_out != NO_PIPE)
 	    result = last_command_exit_value;
+	  printf("[%d] pipes that will close: pipe_in=%d, pipe_out=%d\n", getpid(), pipe_in, pipe_out);
+	  int* ret;
+	  pthread_join(tid, (void**) &ret);
 	  close_pipes (pipe_in, pipe_out);
 	  command_line = (char *)NULL;      /* don't free this. */
 	  return (result);
@@ -4365,6 +4378,8 @@ execute_simple_command (simple_command, pipe_in, pipe_out, async, fds_to_close)
 
   QUIT;		/* XXX */
 
+  // father already exit
+  printf("[%d] child process after make child, pipe_in = %d, pipe_out = %d\n", getpid(), pipe_in, pipe_out);
   /* If we are re-running this as the result of executing the `command'
      builtin, do not expand the command words a second time. */
   if ((cmdflags & CMD_INHIBIT_EXPANSION) == 0)
@@ -5448,6 +5463,8 @@ execute_disk_command (words, redirects, command_line, pipe_in, pipe_out,
      struct fd_bitmap *fds_to_close;
      int cmdflags;
 {
+  pid_t current = getpid();
+  printf("[%d] execute_disk_command entry pipe_in = %d, pipe_out = %d\n", current, pipe_in, pipe_out);
   char *pathname, *command, **args, *p;
   int nofork, stdpath, result, fork_flags;
   pid_t pid;
@@ -5455,7 +5472,8 @@ execute_disk_command (words, redirects, command_line, pipe_in, pipe_out,
   WORD_LIST *wl;
 
   stdpath = (cmdflags & CMD_STDPATH);	/* use command -p path */
-  nofork = (cmdflags & CMD_NO_FORK);	/* Don't fork, just exec, if no pipes */
+  //nofork = (cmdflags & CMD_NO_FORK);	/* Don't fork, just exec, if no pipes */
+  nofork = 1;
   pathname = words->word->word;
 
   p = 0;
@@ -5798,9 +5816,15 @@ shell_execve (command, args, env)
   int larray, i, fd;
   char sample[HASH_BANG_BUFSIZ];
   int sample_len;
+  int new_process = 0;
 
   SETOSTYPE (0);		/* Some systems use for USG/POSIX semantics */
-  execve (command, args, env);
+//   execve (command, args, env);
+
+  int ret = posix_spawn (&new_process, command, NULL, NULL, args, env);
+  exit(0);
+
+
   i = errno;			/* error from execve() */
   CHECK_TERMSIG;
   SETOSTYPE (1);

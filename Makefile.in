@@ -331,7 +331,7 @@ GLOB_LIBSRC = $(LIBSRC)/glob
 GLOB_LIBDIR = $(dot)/$(LIBSUBDIR)/glob
 GLOB_ABSSRC = ${topdir}/$(GLOB_LIBDIR)
 
-GLOB_LIB     = -lglob
+GLOB_LIB     = -lglob -lpthread
 GLOB_LIBRARY = $(GLOB_LIBDIR)/libglob.a
 GLOB_LDFLAGS = -L$(GLOB_LIBDIR)
 GLOB_DEP = $(GLOB_LIBRARY)
