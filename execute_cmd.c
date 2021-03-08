@@ -540,6 +540,66 @@ async_redirect_stdin ()
 
 #define DESCRIBE_PID(pid) do { if (interactive) describe_pid (pid); } while (0)
 
+void * children_subshell_routine (void *args)
+                    // int async_p;
+                    // int flags;
+{
+  struct child_args *recv_args = (struct child_args *)args;
+  int async_p = recv_args->async_p;
+  int flags = recv_args->flags;
+  char* command = recv_args->command;
+//   WORD_LIST* cmd_list = expand_words(recv_args->cmd_list->words);
+//   REDIRECT* redirected = recv_args->cmd_list->redirects;
+  int pipe_in = recv_args->pipe_in;
+  int pipe_out = recv_args->pipe_out;
+  int child = syscall(SYS_gettid);
+  struct fd_bitmap *fds_to_close = recv_args->fds_to_close;
+
+  command = &command[2];
+  int cmd_len = strlen(command) - 2;
+  command[cmd_len] = 0;
+  printf("[%d] child_thread will execute subshell: %s\n",child, command);
+
+  int len = 10;
+  char subshell_script[len];
+  strcat(subshell_script, "/tmp/.sub.");
+  time_t current_time = time(NULL);
+  struct tm * timeinfo = localtime ( &current_time );
+
+  //strncat(subshell_script, );
+  //strcat(subshell_script, "\0");
+  printf("create tmp file: %s\n", subshell_script);
+  FILE* fp = fopen(subshell_script, "w+");
+  if (fp == NULL) {
+          printf("create tmp file %s failed\n", subshell_script);
+          abort();
+  }
+  fputs(command, fp);
+  fputs("\0", fp);
+  char check[100];
+  fseek(fp, 0, SEEK_SET);
+  fgets(check, 100, fp);
+  printf("subshell script is:\n%s\n", check);
+  fclose(fp);
+  printf("done create tmp subshell file\n");
+
+  pid_t mypid;
+  char *argv[2];
+  char exe[4];
+  strcpy(exe, "bash");
+  argv[0] = &exe;
+  argv[1] = &subshell_script;
+  int ret = posix_spawn(&mypid, "./bash", NULL, NULL, argv, NULL);
+    if (ret != 0) {
+      printf("[%d] posix_spawn error code = %d\n",child, errno);
+      abort();
+    }
+ //add_process (command, mypid);
+ waitpid(mypid, &ret, 0);
+ //remove (subshell_script);
+  return NULL;
+}
+
 /* Execute the command passed in COMMAND, perhaps doing it asynchronously.
    COMMAND is exactly what read_command () places into GLOBAL_COMMAND.
    ASYNCHRONOUS, if non-zero, says to do this command in the background.
@@ -560,6 +620,11 @@ execute_command_internal (command, asynchronous, pipe_in, pipe_out,
      int pipe_in, pipe_out;
      struct fd_bitmap *fds_to_close;
 {
+  if (command->type == cm_simple) {
+	  printf("[%d] %s command arg 0 = %s\n", getpid(), __func__, command->value.Simple->words->word->word);
+  } else {
+	  printf("[%d] %s \n", getpid(), __func__);
+  }
   int exec_result, user_subshell, invert, ignore_return, was_error_trap, fork_flags;
   REDIRECT *my_undo_list, *exec_undo_list;
   char *tcmd;
@@ -620,7 +685,7 @@ execute_command_internal (command, asynchronous, pipe_in, pipe_out,
       (shell_control_structure (command->type) &&
        (pipe_out != NO_PIPE || pipe_in != NO_PIPE || asynchronous)))
     {
-      pid_t paren_pid;
+      pthread_t paren_pid;
       int s;
       char *p;
 
@@ -632,7 +697,7 @@ execute_command_internal (command, asynchronous, pipe_in, pipe_out,
 	/* Otherwise we defer setting line_number */
       tcmd = make_command_string (command);
       fork_flags = asynchronous ? FORK_ASYNC : 0;
-      paren_pid = make_child (p = savestring (tcmd), fork_flags);
+      paren_pid = make_subshell_without_fork (p = savestring (tcmd), fork_flags, pipe_in, pipe_out, fds_to_close, children_subshell_routine);
 
       if (user_subshell && signal_is_trapped (ERROR_TRAP) && 
 	  signal_in_progress (DEBUG_TRAP) == 0 && running_trap == 0)
@@ -641,30 +706,32 @@ execute_command_internal (command, asynchronous, pipe_in, pipe_out,
 	  the_printed_command_except_trap = savestring (the_printed_command);
 	}
 
-      if (paren_pid == 0)
-        {
-#if defined (JOB_CONTROL)
-	  FREE (p);		/* child doesn't use pointer */
-#endif
-	  /* We want to run the exit trap for forced {} subshells, and we
-	     want to note this before execute_in_subshell modifies the
-	     COMMAND struct.  Need to keep in mind that execute_in_subshell
-	     runs the exit trap for () subshells itself. */
-	  /* This handles { command; } & */
-	  s = user_subshell == 0 && command->type == cm_group && pipe_in == NO_PIPE && pipe_out == NO_PIPE && asynchronous;
-	  /* run exit trap for : | { ...; } and { ...; } | : */
-	  /* run exit trap for : | ( ...; ) and ( ...; ) | : */
-	  s += user_subshell == 0 && command->type == cm_group && (pipe_in != NO_PIPE || pipe_out != NO_PIPE) && asynchronous == 0;
+  
 
-	  last_command_exit_value = execute_in_subshell (command, asynchronous, pipe_in, pipe_out, fds_to_close);
-	  if (s)
-	    subshell_exit (last_command_exit_value);
-	  else
-	    sh_exit (last_command_exit_value);
-	  /* NOTREACHED */
-        }
-      else
-	{
+//       if (paren_pid == 0)
+//         {
+// #if defined (JOB_CONTROL)
+// 	  FREE (p);		/* child doesn't use pointer */
+// #endif
+// 	  /* We want to run the exit trap for forced {} subshells, and we
+// 	     want to note this before execute_in_subshell modifies the
+// 	     COMMAND struct.  Need to keep in mind that execute_in_subshell
+// 	     runs the exit trap for () subshells itself. */
+// 	  /* This handles { command; } & */
+// 	  s = user_subshell == 0 && command->type == cm_group && pipe_in == NO_PIPE && pipe_out == NO_PIPE && asynchronous;
+// 	  /* run exit t: | { .rap for ..; } and { ...; } | : */
+// 	  /* run exit trap for : | ( ...; ) and ( ...; ) | : */
+// 	  s += user_subshell == 0 && command->type == cm_group && (pipe_in != NO_PIPE || pipe_out != NO_PIPE) && asynchronous == 0;
+
+	//   last_command_exit_value = execute_in_subshell (command, asynchronous, pipe_in, pipe_out, fds_to_close);
+// 	  if (s)
+	//     subshell_exit (last_command_exit_value);
+// 	  else
+	//     sh_exit (last_command_exit_value);
+// 	  /* NOTREACHED */
+//         }
+//       else
+// 	{
 	  close_pipes (pipe_in, pipe_out);
 
 #if defined (PROCESS_SUBSTITUTION) && defined (HAVE_DEV_FD)
@@ -689,7 +756,8 @@ execute_command_internal (command, asynchronous, pipe_in, pipe_out,
 	      invert = (command->flags & CMD_INVERT_RETURN) != 0;
 	      ignore_return = (command->flags & CMD_IGNORE_RETURN) != 0;
 
-	      exec_result = wait_for (paren_pid, 0);
+        // wait for children
+	//       exec_result = pthread_join (paren_pid, 0);
 
 	      /* If we have to, invert the return value. */
 	      if (invert)
@@ -725,7 +793,7 @@ execute_command_internal (command, asynchronous, pipe_in, pipe_out,
 	      last_command_exit_value = 0;
 	      return (EXECUTION_SUCCESS);
 	    }
-	}
+	// }
     }
 
 #if defined (COMMAND_TIMING)
@@ -889,7 +957,9 @@ execute_command_internal (command, asynchronous, pipe_in, pipe_out,
 	       the function to be waited for twice.  This also causes
 	       subshells forked to execute builtin commands (e.g., in
 	       pipelines) to be waited for twice. */
-	      exec_result = wait_for (last_made_pid, 0);
+        printf("[%d] wait for %d\n", getpid(), last_made_pid);
+	      //exec_result = wait_for (last_made_pid, 0);
+        printf("[%d] child process %d returned with result = %d\n", getpid(), last_made_pid, exec_result);
 	  }
       }
 
@@ -4320,7 +4390,7 @@ execute_simple_command (simple_command, pipe_in, pipe_out, async, fds_to_close)
       fork_flags = async ? FORK_ASYNC : 0;
       printf("[%d] father process pipe_in = %d, pipe_out = %d\n", getpid(), pipe_in, pipe_out);
       p = savestring (the_printed_command_except_trap);
-      pthread_t tid = make_child_without_fork (p, fork_flags, simple_command->words, pipe_in, pipe_out);
+      pthread_t tid = make_child_without_fork (p, fork_flags, simple_command, pipe_in, pipe_out);
       if (tid == 0)
 	{
     	  // child

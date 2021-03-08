@@ -1,0 +1,20 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"files.associations": {
+                        "fstream": "cpp",
+                        "*.tcc": "cpp",
+                        "*.y": "c",
+                        "functional": "cpp",
+                        "istream": "cpp",
+                        "ostream": "cpp",
+                        "type_traits": "cpp"
+                },
+		"editor.tabSize": 8,
+		"editor.detectIndentation": false
+	}
+}

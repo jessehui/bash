@@ -6367,6 +6367,7 @@ command_substitute (string, quoted, flags)
   old_async_pid = last_asynchronous_pid;
   fork_flags = (subshell_environment&SUBSHELL_ASYNC) ? FORK_ASYNC : 0;
   pid = make_child ((char *)NULL, fork_flags|FORK_NOTERM);
+  // pthread_t tid = make_child_without_fork_for_subst(string, fork_flags);
   last_asynchronous_pid = old_async_pid;
 
   if (pid == 0)

@@ -29,7 +29,7 @@
 MACHINE="x86_64"
 OS="linux-gnu"
 CC="gcc"
-CFLAGS="-g -Wno-parentheses -Wno-format-security"
+CFLAGS="-g -DDEBUG "
 RELEASE="5.1"
 PATCHLEVEL="!PATCHLEVEL!"
 RELSTATUS="release"
