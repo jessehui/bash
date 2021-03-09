@@ -1,1 +1,0 @@
-ENV1=test_test; busybox echo $ENV1

@@ -179,7 +179,7 @@ static void execute_subshell_builtin_or_function PARAMS((WORD_LIST *, REDIRECT *
 						      struct fd_bitmap *,
 						      int));
 static int execute_disk_command PARAMS((WORD_LIST *, REDIRECT *, char *,
-				      int, int, int, struct fd_bitmap *, int));
+				      int, int, int, struct fd_bitmap *, int, SIMPLE_COM *));
 
 static char *getinterp PARAMS((char *, int, int *));
 static void initialize_subshell PARAMS((void));
@@ -540,6 +540,7 @@ async_redirect_stdin ()
 
 #define DESCRIBE_PID(pid) do { if (interactive) describe_pid (pid); } while (0)
 
+static const char tmp_file_template[] = "/tmp/.script.lock.XXXXXX";
 void * children_subshell_routine (void *args)
                     // int async_p;
                     // int flags;
@@ -560,14 +561,12 @@ void * children_subshell_routine (void *args)
   command[cmd_len] = 0;
   printf("[%d] child_thread will execute subshell: %s\n",child, command);
 
-  int len = 10;
-  char subshell_script[len];
-  strcat(subshell_script, "/tmp/.sub.");
-  time_t current_time = time(NULL);
-  struct tm * timeinfo = localtime ( &current_time );
+  // int len = 10;
+  char subshell_script[PATH_MAX];
+  strcpy(subshell_script, tmp_file_template);
+  // generate a tmp file name
+  mkstemp(subshell_script);
 
-  //strncat(subshell_script, );
-  //strcat(subshell_script, "\0");
   printf("create tmp file: %s\n", subshell_script);
   FILE* fp = fopen(subshell_script, "w+");
   if (fp == NULL) {
@@ -584,11 +583,7 @@ void * children_subshell_routine (void *args)
   printf("done create tmp subshell file\n");
 
   pid_t mypid;
-  char *argv[2];
-  char exe[4];
-  strcpy(exe, "bash");
-  argv[0] = &exe;
-  argv[1] = &subshell_script;
+  char *argv[3] = {"bash", subshell_script};
   int ret = posix_spawn(&mypid, "./bash", NULL, NULL, argv, NULL);
     if (ret != 0) {
       printf("[%d] posix_spawn error code = %d\n",child, errno);
@@ -596,7 +591,7 @@ void * children_subshell_routine (void *args)
     }
  //add_process (command, mypid);
  waitpid(mypid, &ret, 0);
- //remove (subshell_script);
+ unlink (subshell_script);
   return NULL;
 }
 
@@ -4752,7 +4747,7 @@ execute_from_filesystem:
 #endif
   result = execute_disk_command (words, simple_command->redirects, command_line,
 			pipe_in, pipe_out, async, fds_to_close,
-			cmdflags);
+			cmdflags, simple_command);
 
  return_result:
   bind_lastarg (lastarg);
@@ -5344,7 +5339,7 @@ execute_subshell_builtin_or_function (words, redirects, builtin, var,
 
 	      command_line = savestring (the_printed_command_except_trap ? the_printed_command_except_trap : "");
 	      r = execute_disk_command (words, (REDIRECT *)0, command_line,
-		  -1, -1, async, (struct fd_bitmap *)0, flags|CMD_NO_FORK);
+		  -1, -1, async, (struct fd_bitmap *)0, flags|CMD_NO_FORK, NULL);
 	    }
 	  subshell_exit (r);
 	}
@@ -5525,13 +5520,14 @@ setup_async_signals ()
 
 static int
 execute_disk_command (words, redirects, command_line, pipe_in, pipe_out,
-		      async, fds_to_close, cmdflags)
+		      async, fds_to_close, cmdflags, simple_cmd)
      WORD_LIST *words;
      REDIRECT *redirects;
      char *command_line;
      int pipe_in, pipe_out, async;
      struct fd_bitmap *fds_to_close;
      int cmdflags;
+     SIMPLE_COM *simple_cmd;
 {
   pid_t current = getpid();
   printf("[%d] execute_disk_command entry pipe_in = %d, pipe_out = %d\n", current, pipe_in, pipe_out);
@@ -5542,8 +5538,8 @@ execute_disk_command (words, redirects, command_line, pipe_in, pipe_out,
   WORD_LIST *wl;
 
   stdpath = (cmdflags & CMD_STDPATH);	/* use command -p path */
-  //nofork = (cmdflags & CMD_NO_FORK);	/* Don't fork, just exec, if no pipes */
-  nofork = 1;
+  nofork = (cmdflags & CMD_NO_FORK);	/* Don't fork, just exec, if no pipes */
+  // nofork = 1; // test
   pathname = words->word->word;
 
   p = 0;
@@ -5592,7 +5588,13 @@ execute_disk_command (words, redirects, command_line, pipe_in, pipe_out,
   else
     {
       fork_flags = async ? FORK_ASYNC : 0;
-      pid = make_child (p = savestring (command_line), fork_flags);
+      printf("[%d] father process pipe_in = %d, pipe_out = %d\n", getpid(), pipe_in, pipe_out);
+      p = savestring (command_line);
+      pthread_t tid = make_child_without_fork (p, fork_flags, simple_cmd, pipe_in, pipe_out);
+      pid = getpid();
+      // int *ret = 0;
+      pthread_join(tid, NULL);
+      // pid = make_child (p = savestring (command_line), fork_flags);
     }
 
   if (pid == 0)
@@ -5889,9 +5891,9 @@ shell_execve (command, args, env)
   int new_process = 0;
 
   SETOSTYPE (0);		/* Some systems use for USG/POSIX semantics */
-//   execve (command, args, env);
+  execve (command, args, env);
 
-  int ret = posix_spawn (&new_process, command, NULL, NULL, args, env);
+  // int ret = posix_spawn (&new_process, command, NULL, NULL, args, env);
   exit(0);
 
 
