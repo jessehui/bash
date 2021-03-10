@@ -60,26 +60,26 @@
  * list were combined to satisfy a larger request.
  */
 struct _malstats {
-  int nmalloc[NBUCKETS];
-  int tmalloc[NBUCKETS];
-  int nmorecore[NBUCKETS];
-  int nlesscore[NBUCKETS];
-  int nmal;
-  int nfre;
-  int nrealloc;
-  int nrcopy;
-  int nrecurse;
-  int nsbrk;
-  bits32_t tsbrk;
-  bits32_t bytesused;
-  bits32_t bytesfree;
-  u_bits32_t bytesreq;
-  int tbsplit;
-  int nsplit[NBUCKETS];
-  int tbcoalesce;
-  int ncoalesce[NBUCKETS];
-  int nmmap;
-  bits32_t tmmap;
+    int nmalloc[NBUCKETS];
+    int tmalloc[NBUCKETS];
+    int nmorecore[NBUCKETS];
+    int nlesscore[NBUCKETS];
+    int nmal;
+    int nfre;
+    int nrealloc;
+    int nrcopy;
+    int nrecurse;
+    int nsbrk;
+    bits32_t tsbrk;
+    bits32_t bytesused;
+    bits32_t bytesfree;
+    u_bits32_t bytesreq;
+    int tbsplit;
+    int nsplit[NBUCKETS];
+    int tbcoalesce;
+    int ncoalesce[NBUCKETS];
+    int nmmap;
+    bits32_t tmmap;
 };
 
 /* Return statistics describing allocation of blocks of size BLOCKSIZE.
@@ -93,15 +93,15 @@ struct _malstats {
    times two blocks of this size were combined to satisfy a larger
    request. */
 struct bucket_stats {
-  u_bits32_t blocksize;
-  int nfree;
-  int nused;
-  int nmal;
-  int nmorecore;
-  int nlesscore;
-  int nsplit;
-  int ncoalesce;
-  int nmmap;		/* currently unused */
+    u_bits32_t blocksize;
+    int nfree;
+    int nused;
+    int nmal;
+    int nmorecore;
+    int nlesscore;
+    int nsplit;
+    int ncoalesce;
+    int nmmap;		/* currently unused */
 };
 
 extern struct bucket_stats malloc_bucket_stats PARAMS((int));

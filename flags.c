@@ -163,61 +163,61 @@ int pipefail_opt = 0;
 /* **************************************************************** */
 
 const struct flags_alist shell_flags[] = {
-  /* Standard sh flags. */
-  { 'a', &mark_modified_vars },
+    /* Standard sh flags. */
+    { 'a', &mark_modified_vars },
 #if defined (JOB_CONTROL)
-  { 'b', &asynchronous_notification },
+    { 'b', &asynchronous_notification },
 #endif /* JOB_CONTROL */
-  { 'e', &errexit_flag },
-  { 'f', &disallow_filename_globbing },
-  { 'h', &hashing_enabled },
-  { 'i', &forced_interactive },
-  { 'k', &place_keywords_in_env },
+    { 'e', &errexit_flag },
+    { 'f', &disallow_filename_globbing },
+    { 'h', &hashing_enabled },
+    { 'i', &forced_interactive },
+    { 'k', &place_keywords_in_env },
 #if defined (JOB_CONTROL)
-  { 'm', &jobs_m_flag },
+    { 'm', &jobs_m_flag },
 #endif /* JOB_CONTROL */
-  { 'n', &read_but_dont_execute },
-  { 'p', &privileged_mode },
+    { 'n', &read_but_dont_execute },
+    { 'p', &privileged_mode },
 #if defined (RESTRICTED_SHELL)
-  { 'r', &restricted },
+    { 'r', &restricted },
 #endif /* RESTRICTED_SHELL */
-  { 't', &just_one_command },
-  { 'u', &unbound_vars_is_error },
-  { 'v', &verbose_flag },
-  { 'x', &echo_command_at_execute },
+    { 't', &just_one_command },
+    { 'u', &unbound_vars_is_error },
+    { 'v', &verbose_flag },
+    { 'x', &echo_command_at_execute },
 
-  /* New flags that control non-standard things. */
+    /* New flags that control non-standard things. */
 #if 0
-  { 'l', &lexical_scoping },
+    { 'l', &lexical_scoping },
 #endif
 #if defined (BRACE_EXPANSION)
-  { 'B', &brace_expansion },
+    { 'B', &brace_expansion },
 #endif
-  { 'C', &noclobber },
-  { 'E', &error_trace_mode },
+    { 'C', &noclobber },
+    { 'E', &error_trace_mode },
 #if defined (BANG_HISTORY)
-  { 'H', &histexp_flag },
+    { 'H', &histexp_flag },
 #endif /* BANG_HISTORY */
-  { 'P', &no_symbolic_links },
-  { 'T', &function_trace_mode },
-  {0, (int *)NULL}
+    { 'P', &no_symbolic_links },
+    { 'T', &function_trace_mode },
+    {0, (int *)NULL}
 };
 
 #define NUM_SHELL_FLAGS (sizeof (shell_flags) / sizeof (struct flags_alist))
 
-char optflags[NUM_SHELL_FLAGS+4] = { '+' };
+char optflags[NUM_SHELL_FLAGS + 4] = { '+' };
 
 int *
 find_flag (name)
-     int name;
+int name;
 {
-  int i;
-  for (i = 0; shell_flags[i].name; i++)
-    {
-      if (shell_flags[i].name == name)
-	return (shell_flags[i].value);
+    int i;
+    for (i = 0; shell_flags[i].name; i++) {
+        if (shell_flags[i].name == name) {
+            return (shell_flags[i].value);
+        }
     }
-  return (FLAG_UNKNOWN);
+    return (FLAG_UNKNOWN);
 }
 
 /* Change the state of a flag, and return it's original value, or return
@@ -225,161 +225,170 @@ find_flag (name)
    FLAG_ON or FLAG_OFF. */
 int
 change_flag (flag, on_or_off)
-  int flag;
-  int on_or_off;
+int flag;
+int on_or_off;
 {
-  int *value, old_value;
+    int *value, old_value;
 
 #if defined (RESTRICTED_SHELL)
-  /* Don't allow "set +r" in a shell which is `restricted'. */
-  if (restricted && flag == 'r' && on_or_off == FLAG_OFF)
-    return (FLAG_ERROR);
+    /* Don't allow "set +r" in a shell which is `restricted'. */
+    if (restricted && flag == 'r' && on_or_off == FLAG_OFF) {
+        return (FLAG_ERROR);
+    }
 #endif /* RESTRICTED_SHELL */
 
-  value = find_flag (flag);
+    value = find_flag (flag);
 
-  if ((value == (int *)FLAG_UNKNOWN) || (on_or_off != FLAG_ON && on_or_off != FLAG_OFF))
-    return (FLAG_ERROR);
+    if ((value == (int *)FLAG_UNKNOWN) || (on_or_off != FLAG_ON && on_or_off != FLAG_OFF)) {
+        return (FLAG_ERROR);
+    }
 
-  old_value = *value;
-  *value = (on_or_off == FLAG_ON) ? 1 : 0;
+    old_value = *value;
+    *value = (on_or_off == FLAG_ON) ? 1 : 0;
 
-  /* Special cases for a few flags. */
-  switch (flag)
-    {
+    /* Special cases for a few flags. */
+    switch (flag) {
 #if defined (BANG_HISTORY)
-    case 'H':
-      history_expansion = histexp_flag;
-      if (on_or_off == FLAG_ON)
-	bash_initialize_history ();
-      break;
+        case 'H':
+            history_expansion = histexp_flag;
+            if (on_or_off == FLAG_ON) {
+                bash_initialize_history ();
+            }
+            break;
 #endif
 
 #if defined (JOB_CONTROL)
-    case 'm':
-      set_job_control (on_or_off == FLAG_ON);
-      break;
+        case 'm':
+            set_job_control (on_or_off == FLAG_ON);
+            break;
 #endif /* JOB_CONTROL */
 
-    case 'e':
-      if (builtin_ignoring_errexit == 0)
-	exit_immediately_on_error = errexit_flag;
-      break;
+        case 'e':
+            if (builtin_ignoring_errexit == 0) {
+                exit_immediately_on_error = errexit_flag;
+            }
+            break;
 
-    case 'n':
-      if (interactive_shell)
-	read_but_dont_execute = 0;
-      break;
+        case 'n':
+            if (interactive_shell) {
+                read_but_dont_execute = 0;
+            }
+            break;
 
-    case 'p':
-      if (on_or_off == FLAG_OFF)
-	disable_priv_mode ();
-      break;
+        case 'p':
+            if (on_or_off == FLAG_OFF) {
+                disable_priv_mode ();
+            }
+            break;
 
 #if defined (RESTRICTED_SHELL)
-    case 'r':
-      if (on_or_off == FLAG_ON && shell_initialized)
-	maybe_make_restricted (shell_name);
-      break;
+        case 'r':
+            if (on_or_off == FLAG_ON && shell_initialized) {
+                maybe_make_restricted (shell_name);
+            }
+            break;
 #endif
 
-    case 'v':
-      echo_input_at_read = verbose_flag;
-      break;
+        case 'v':
+            echo_input_at_read = verbose_flag;
+            break;
     }
 
-  return (old_value);
+    return (old_value);
 }
 
 /* Return a string which is the names of all the currently
    set shell flags. */
 char *
-which_set_flags ()
-{
-  char *temp;
-  int i, string_index;
+which_set_flags () {
+    char *temp;
+    int i, string_index;
 
-  temp = (char *)xmalloc (1 + NUM_SHELL_FLAGS + read_from_stdin + want_pending_command);
-  for (i = string_index = 0; shell_flags[i].name; i++)
-    if (*(shell_flags[i].value))
-      temp[string_index++] = shell_flags[i].name;
+    temp = (char *)xmalloc (1 + NUM_SHELL_FLAGS + read_from_stdin + want_pending_command);
+    for (i = string_index = 0; shell_flags[i].name; i++)
+        if (*(shell_flags[i].value)) {
+            temp[string_index++] = shell_flags[i].name;
+        }
 
-  if (want_pending_command)
-    temp[string_index++] = 'c';
-  if (read_from_stdin)
-    temp[string_index++] = 's';
+    if (want_pending_command) {
+        temp[string_index++] = 'c';
+    }
+    if (read_from_stdin) {
+        temp[string_index++] = 's';
+    }
 
-  temp[string_index] = '\0';
-  return (temp);
+    temp[string_index] = '\0';
+    return (temp);
 }
 
 char *
-get_current_flags ()
-{
-  char *temp;
-  int i;
+get_current_flags () {
+    char *temp;
+    int i;
 
-  temp = (char *)xmalloc (1 + NUM_SHELL_FLAGS);
-  for (i = 0; shell_flags[i].name; i++)
-    temp[i] = *(shell_flags[i].value);
-  temp[i] = '\0';
-  return (temp);
+    temp = (char *)xmalloc (1 + NUM_SHELL_FLAGS);
+    for (i = 0; shell_flags[i].name; i++) {
+        temp[i] = *(shell_flags[i].value);
+    }
+    temp[i] = '\0';
+    return (temp);
 }
 
 void
 set_current_flags (bitmap)
-     const char *bitmap;
+const char *bitmap;
 {
-  int i;
+    int i;
 
-  if (bitmap == 0)
-    return;
-  for (i = 0; shell_flags[i].name; i++)
-    *(shell_flags[i].value) = bitmap[i];
+    if (bitmap == 0) {
+        return;
+    }
+    for (i = 0; shell_flags[i].name; i++) {
+        *(shell_flags[i].value) = bitmap[i];
+    }
 }
 
 void
-reset_shell_flags ()
-{
-  mark_modified_vars = disallow_filename_globbing = 0;
-  place_keywords_in_env = read_but_dont_execute = just_one_command = 0;
-  noclobber = unbound_vars_is_error = 0;
-  echo_command_at_execute = jobs_m_flag = forced_interactive = 0;
-  no_symbolic_links = 0;
-  privileged_mode = pipefail_opt = 0;
+reset_shell_flags () {
+    mark_modified_vars = disallow_filename_globbing = 0;
+    place_keywords_in_env = read_but_dont_execute = just_one_command = 0;
+    noclobber = unbound_vars_is_error = 0;
+    echo_command_at_execute = jobs_m_flag = forced_interactive = 0;
+    no_symbolic_links = 0;
+    privileged_mode = pipefail_opt = 0;
 
-  error_trace_mode = function_trace_mode = 0;
+    error_trace_mode = function_trace_mode = 0;
 
-  exit_immediately_on_error = errexit_flag = 0;
-  echo_input_at_read = verbose_flag = 0;
+    exit_immediately_on_error = errexit_flag = 0;
+    echo_input_at_read = verbose_flag = 0;
 
-  hashing_enabled = interactive_comments = 1;
+    hashing_enabled = interactive_comments = 1;
 
 #if defined (JOB_CONTROL)
-  asynchronous_notification = 0;
+    asynchronous_notification = 0;
 #endif
 
 #if defined (BANG_HISTORY)
-  histexp_flag = 0;
+    histexp_flag = 0;
 #endif
 
 #if defined (BRACE_EXPANSION)
-  brace_expansion = 1;
+    brace_expansion = 1;
 #endif
 
 #if defined (RESTRICTED_SHELL)
-  restricted = 0;
+    restricted = 0;
 #endif
 }
 
 void
-initialize_flags ()
-{
-  register int i;
+initialize_flags () {
+    register int i;
 
-  for (i = 0; shell_flags[i].name; i++)
-    optflags[i+1] = shell_flags[i].name;
-  optflags[++i] = 'o';
-  optflags[++i] = ';';
-  optflags[i+1] = '\0';
+    for (i = 0; shell_flags[i].name; i++) {
+        optflags[i + 1] = shell_flags[i].name;
+    }
+    optflags[++i] = 'o';
+    optflags[++i] = ';';
+    optflags[i + 1] = '\0';
 }

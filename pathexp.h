@@ -84,18 +84,18 @@ extern char **shell_glob_filename PARAMS((const char *, int));
    "undun.c", name[3] = NULL).  */
 
 struct ign {
-  char *val;
-  int len, flags;
+    char *val;
+    int len, flags;
 };
 
 typedef int sh_iv_item_func_t PARAMS((struct ign *));
 
 struct ignorevar {
-  char *varname;	/* FIGNORE, GLOBIGNORE, or EXECIGNORE */
-  struct ign *ignores;	/* Store the ignore strings here */
-  int num_ignores;	/* How many are there? */
-  char *last_ignoreval;	/* Last value of variable - cached for speed */
-  sh_iv_item_func_t *item_func; /* Called when each item is parsed from $`varname' */
+    char *varname;	/* FIGNORE, GLOBIGNORE, or EXECIGNORE */
+    struct ign *ignores;	/* Store the ignore strings here */
+    int num_ignores;	/* How many are there? */
+    char *last_ignoreval;	/* Last value of variable - cached for speed */
+    sh_iv_item_func_t *item_func; /* Called when each item is parsed from $`varname' */
 };
 
 extern void setup_ignore_patterns PARAMS((struct ignorevar *));

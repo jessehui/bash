@@ -100,61 +100,59 @@ static int validate_path ();
 
 int
 pathchk_builtin (list)
-     WORD_LIST *list;
+WORD_LIST *list;
 {
-  int retval, pflag, opt;
+    int retval, pflag, opt;
 
-  reset_internal_getopt ();
-  while ((opt = internal_getopt (list, "p")) != -1)
-    {
-      switch (opt)
-	{
-	case 'p':
-	  pflag = 1;
-	  break;
-	CASE_HELPOPT;
-	default:
-	  builtin_usage ();
-	  return (EX_USAGE);
-	}
+    reset_internal_getopt ();
+    while ((opt = internal_getopt (list, "p")) != -1) {
+        switch (opt) {
+            case 'p':
+                pflag = 1;
+                break;
+                CASE_HELPOPT;
+            default:
+                builtin_usage ();
+                return (EX_USAGE);
+        }
     }
-  list = loptend;
+    list = loptend;
 
-  if (list == 0)
-    {
-      builtin_usage ();
-      return (EX_USAGE);
+    if (list == 0) {
+        builtin_usage ();
+        return (EX_USAGE);
     }
 
-  for (retval = 0; list; list = list->next)
-    retval |= validate_path (list->word->word, pflag);
+    for (retval = 0; list; list = list->next) {
+        retval |= validate_path (list->word->word, pflag);
+    }
 
-  return (retval ? EXECUTION_FAILURE : EXECUTION_SUCCESS);
+    return (retval ? EXECUTION_FAILURE : EXECUTION_SUCCESS);
 }
 
 char *pathchk_doc[] = {
-	"Check pathnames for validity.",
-	"",
-	"Check each pathname argument for validity (i.e., it may be used to",
-	"create or access a file without causing syntax errors) and portability",
-	"(i.e., no filename truncation will result).  If the `-p' option is",
-	"supplied, more extensive portability checks are performed.",
-	(char *)NULL
+    "Check pathnames for validity.",
+    "",
+    "Check each pathname argument for validity (i.e., it may be used to",
+    "create or access a file without causing syntax errors) and portability",
+    "(i.e., no filename truncation will result).  If the `-p' option is",
+    "supplied, more extensive portability checks are performed.",
+    (char *)NULL
 };
 
 /* The standard structure describing a builtin command.  bash keeps an array
    of these structures. */
 struct builtin pathchk_struct = {
-	"pathchk",		/* builtin name */
-	pathchk_builtin,	/* function implementing the builtin */
-	BUILTIN_ENABLED,	/* initial flags for builtin */
-	pathchk_doc,		/* array of long documentation strings. */
-	"pathchk [-p] pathname ...",	/* usage synopsis */
-	0			/* reserved for internal use */
+    "pathchk",		/* builtin name */
+    pathchk_builtin,	/* function implementing the builtin */
+    BUILTIN_ENABLED,	/* initial flags for builtin */
+    pathchk_doc,		/* array of long documentation strings. */
+    "pathchk [-p] pathname ...",	/* usage synopsis */
+    0			/* reserved for internal use */
 };
 
 /* The remainder of this file is stolen shamelessly from `pathchk.c' in
-   the sh-utils-1.12 distribution, by 
+   the sh-utils-1.12 distribution, by
 
    David MacKenzie <djm@gnu.ai.mit.edu>
    and Jim Meyering <meyering@cs.utexas.edu> */
@@ -162,41 +160,39 @@ struct builtin pathchk_struct = {
 /* Each element is nonzero if the corresponding ASCII character is
    in the POSIX portable character set, and zero if it is not.
    In addition, the entry for `/' is nonzero to simplify checking. */
-static char const portable_chars[256] =
-{
-  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, /* 0-15 */
-  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, /* 16-31 */
-  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, /* 32-47 */
-  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, /* 48-63 */
-  0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, /* 64-79 */
-  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, /* 80-95 */
-  0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, /* 96-111 */
-  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, /* 112-127 */
-  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
-  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
-  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
-  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
-  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
-  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
-  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
-  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+static char const portable_chars[256] = {
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, /* 0-15 */
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, /* 16-31 */
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, /* 32-47 */
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, /* 48-63 */
+    0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, /* 64-79 */
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, /* 80-95 */
+    0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, /* 96-111 */
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, /* 112-127 */
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 };
 
 /* If PATH contains only portable characters, return 1, else 0.  */
 
 static int
 portable_chars_only (path)
-     const char *path;
+const char *path;
 {
-  const char *p;
+    const char *p;
 
-  for (p = path; *p; ++p)
-    if (portable_chars[(const unsigned char) *p] == 0)
-      {
-	builtin_error ("path `%s' contains nonportable character `%c'", path, *p);
-	return 0;
-      }
-  return 1;
+    for (p = path; *p; ++p)
+        if (portable_chars[(const unsigned char) *p] == 0) {
+            builtin_error ("path `%s' contains nonportable character `%c'", path, *p);
+            return 0;
+        }
+    return 1;
 }
 
 /* On some systems, stat can return EINTR.  */
@@ -207,16 +203,16 @@ portable_chars_only (path)
 # define SAFE_STAT(name, buf) safe_stat (name, buf)
 static inline int
 safe_stat (name, buf)
-     const char *name;
-     struct stat *buf;
+const char *name;
+struct stat *buf;
 {
-  int ret;
+    int ret;
 
-  do
-    ret = stat (name, buf);
-  while (ret < 0 && errno == EINTR);
+    do {
+        ret = stat (name, buf);
+    } while (ret < 0 && errno == EINTR);
 
-  return ret;
+    return ret;
 }
 #endif
 
@@ -225,40 +221,40 @@ safe_stat (name, buf)
 
 static int
 dir_ok (path)
-     const char *path;
+const char *path;
 {
-  struct stat stats;
+    struct stat stats;
 
-  if (SAFE_STAT (path, &stats))
-    return 2;
-
-  if (!S_ISDIR (stats.st_mode))
-    {
-      builtin_error ("`%s' is not a directory", path);
-      return 0;
+    if (SAFE_STAT (path, &stats)) {
+        return 2;
     }
 
-  /* Use access to test for search permission because
-     testing permission bits of st_mode can lose with new
-     access control mechanisms.  Of course, access loses if you're
-     running setuid. */
-  if (access (path, X_OK) != 0)
-    {
-      if (errno == EACCES)
-	builtin_error ("directory `%s' is not searchable", path);
-      else
-	builtin_error ("%s: %s", path, strerror (errno));
-      return 0;
+    if (!S_ISDIR (stats.st_mode)) {
+        builtin_error ("`%s' is not a directory", path);
+        return 0;
     }
 
-  return 1;
+    /* Use access to test for search permission because
+       testing permission bits of st_mode can lose with new
+       access control mechanisms.  Of course, access loses if you're
+       running setuid. */
+    if (access (path, X_OK) != 0) {
+        if (errno == EACCES) {
+            builtin_error ("directory `%s' is not searchable", path);
+        } else {
+            builtin_error ("%s: %s", path, strerror (errno));
+        }
+        return 0;
+    }
+
+    return 1;
 }
 
 static char *
 xstrdup (s)
-     char *s;
+char *s;
 {
-  return (savestring (s));
+    return (savestring (s));
 }
 
 /* Make sure that
@@ -277,105 +273,104 @@ xstrdup (s)
 
 static int
 validate_path (path, portability)
-     char *path;
-     int portability;
+char *path;
+int portability;
 {
-  int path_max;
-  int last_elem;		/* Nonzero if checking last element of path. */
-  int exists;			/* 2 if the path element exists.  */
-  char *slash;
-  char *parent;			/* Last existing leading directory so far.  */
+    int path_max;
+    int last_elem;		/* Nonzero if checking last element of path. */
+    int exists;			/* 2 if the path element exists.  */
+    char *slash;
+    char *parent;			/* Last existing leading directory so far.  */
 
-  if (portability && !portable_chars_only (path))
-    return 1;
+    if (portability && !portable_chars_only (path)) {
+        return 1;
+    }
 
-  if (*path == '\0')
-    return 0;
+    if (*path == '\0') {
+        return 0;
+    }
 
 #ifdef lint
-  /* Suppress `used before initialized' warning.  */
-  exists = 0;
+    /* Suppress `used before initialized' warning.  */
+    exists = 0;
 #endif
 
-  /* Figure out the parent of the first element in PATH.  */
-  parent = xstrdup (*path == '/' ? "/" : ".");
+    /* Figure out the parent of the first element in PATH.  */
+    parent = xstrdup (*path == '/' ? "/" : ".");
 
-  slash = path;
-  last_elem = 0;
-  while (1)
-    {
-      int name_max;
-      int length;		/* Length of partial path being checked. */
-      char *start;		/* Start of path element being checked. */
+    slash = path;
+    last_elem = 0;
+    while (1) {
+        int name_max;
+        int length;		/* Length of partial path being checked. */
+        char *start;		/* Start of path element being checked. */
 
-      /* Find the end of this element of the path.
-	 Then chop off the rest of the path after this element. */
-      while (*slash == '/')
-	slash++;
-      start = slash;
-      slash = strchr (slash, '/');
-      if (slash != NULL)
-	*slash = '\0';
-      else
-	{
-	  last_elem = 1;
-	  slash = strchr (start, '\0');
-	}
+        /* Find the end of this element of the path.
+        Then chop off the rest of the path after this element. */
+        while (*slash == '/') {
+            slash++;
+        }
+        start = slash;
+        slash = strchr (slash, '/');
+        if (slash != NULL) {
+            *slash = '\0';
+        } else {
+            last_elem = 1;
+            slash = strchr (start, '\0');
+        }
 
-      if (!last_elem)
-	{
-	  exists = dir_ok (path);
-	  if (exists == 0)
-	    {
-	      free (parent);
-	      return 1;
-	    }
-	}
+        if (!last_elem) {
+            exists = dir_ok (path);
+            if (exists == 0) {
+                free (parent);
+                return 1;
+            }
+        }
 
-      length = slash - start;
-      /* Since we know that `parent' is a directory, it's ok to call
-	 pathconf with it as the argument.  (If `parent' isn't a directory
-	 or doesn't exist, the behavior of pathconf is undefined.)
-	 But if `parent' is a directory and is on a remote file system,
-	 it's likely that pathconf can't give us a reasonable value
-	 and will return -1.  (NFS and tempfs are not POSIX . . .)
-	 In that case, we have no choice but to assume the pessimal
-	 POSIX minimums.  */
-      name_max = portability ? _POSIX_NAME_MAX : NAME_MAX_FOR (parent);
-      if (name_max < 0)
-	name_max = _POSIX_NAME_MAX;
-      if (length > name_max)
-	{
-	  builtin_error ("name `%s' has length %d; exceeds limit of %d",
-		 start, length, name_max);
-	  free (parent);
-	  return 1;
-	}
+        length = slash - start;
+        /* Since we know that `parent' is a directory, it's ok to call
+        pathconf with it as the argument.  (If `parent' isn't a directory
+         or doesn't exist, the behavior of pathconf is undefined.)
+         But if `parent' is a directory and is on a remote file system,
+         it's likely that pathconf can't give us a reasonable value
+         and will return -1.  (NFS and tempfs are not POSIX . . .)
+         In that case, we have no choice but to assume the pessimal
+         POSIX minimums.  */
+        name_max = portability ? _POSIX_NAME_MAX : NAME_MAX_FOR (parent);
+        if (name_max < 0) {
+            name_max = _POSIX_NAME_MAX;
+        }
+        if (length > name_max) {
+            builtin_error ("name `%s' has length %d; exceeds limit of %d",
+                           start, length, name_max);
+            free (parent);
+            return 1;
+        }
 
-      if (last_elem)
-	break;
+        if (last_elem) {
+            break;
+        }
 
-      if (exists == 1)
-	{
-	  free (parent);
-	  parent = xstrdup (path);
-	}
+        if (exists == 1) {
+            free (parent);
+            parent = xstrdup (path);
+        }
 
-      *slash++ = '/';
+        *slash++ = '/';
     }
 
-  /* `parent' is now the last existing leading directory in the whole path,
-     so it's ok to call pathconf with it as the argument.  */
-  path_max = portability ? _POSIX_PATH_MAX : PATH_MAX_FOR (parent);
-  if (path_max < 0)
-    path_max = _POSIX_PATH_MAX;
-  free (parent);
-  if (strlen (path) > path_max)
-    {
-      builtin_error ("path `%s' has length %lu; exceeds limit of %d",
-	     path, (unsigned long)strlen (path), path_max);
-      return 1;
+    /* `parent' is now the last existing leading directory in the whole path,
+       so it's ok to call pathconf with it as the argument.  */
+    path_max = portability ? _POSIX_PATH_MAX : PATH_MAX_FOR (parent);
+    if (path_max < 0) {
+        path_max = _POSIX_PATH_MAX;
+    }
+    free (parent);
+    if (strlen (path) > path_max) {
+        builtin_error ("path `%s' has length %lu; exceeds limit of %d",
+                       path, (unsigned long)strlen (path), path_max);
+        return 1;
     }
 
-  return 0;
+    return 0;
 }

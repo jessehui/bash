@@ -53,9 +53,9 @@ do {									\
 } while(0)
 
 typedef struct objcache {
-	PTR_T	data;
-	int	cs;		/* cache size, number of objects */
-	int	nc;		/* number of cache entries */
+    PTR_T	data;
+    int	cs;		/* cache size, number of objects */
+    int	nc;		/* number of cache entries */
 } sh_obj_cache_t;
 
 /* Create an object cache C of N pointers to OTYPE. */

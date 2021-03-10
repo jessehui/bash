@@ -32,18 +32,18 @@
 /* Find the first occurrence in S of any character in ACCEPT.  */
 char *
 strpbrk (s, accept)
-     register const char *s;
-     register const char *accept;
+register const char *s;
+register const char *accept;
 {
-  while (*s != '\0')
-    {
-      const char *a = accept;
-      while (*a != '\0')
-	if (*a++ == *s)
-	  return (char *) s;
-      ++s;
+    while (*s != '\0') {
+        const char *a = accept;
+        while (*a != '\0')
+            if (*a++ == *s) {
+                return (char *) s;
+            }
+        ++s;
     }
 
-  return 0;
+    return 0;
 }
 #endif

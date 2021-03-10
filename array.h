@@ -30,17 +30,17 @@ typedef intmax_t	arrayind_t;
 enum atype {array_indexed, array_assoc};	/* only array_indexed used */
 
 typedef struct array {
-	enum atype	type;
-	arrayind_t	max_index;
-	int		num_elements;
-	struct array_element *head;
-	struct array_element *lastref;
+    enum atype	type;
+    arrayind_t	max_index;
+    int		num_elements;
+    struct array_element *head;
+    struct array_element *lastref;
 } ARRAY;
 
 typedef struct array_element {
-	arrayind_t	ind;
-	char	*value;
-	struct array_element *next, *prev;
+    arrayind_t	ind;
+    char	*value;
+    struct array_element *next, *prev;
 } ARRAY_ELEMENT;
 
 typedef int sh_ae_map_func_t PARAMS((ARRAY_ELEMENT *, void *));
@@ -51,7 +51,7 @@ extern void	array_flush PARAMS((ARRAY *));
 extern void	array_dispose PARAMS((ARRAY *));
 extern ARRAY	*array_copy PARAMS((ARRAY *));
 extern ARRAY	*array_slice PARAMS((ARRAY *, ARRAY_ELEMENT *, ARRAY_ELEMENT *));
-extern void	array_walk PARAMS((ARRAY   *, sh_ae_map_func_t *, void *));
+extern void	array_walk PARAMS((ARRAY *, sh_ae_map_func_t *, void *));
 
 extern ARRAY_ELEMENT *array_shift PARAMS((ARRAY *, int, int));
 extern int	array_rshift PARAMS((ARRAY *, int, char *));

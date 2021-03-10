@@ -33,12 +33,11 @@
 
 void _rl_parse_colors (void);
 
-static const char *const indicator_name[]=
-  {
+static const char *const indicator_name[] = {
     "lc", "rc", "ec", "rs", "no", "fi", "di", "ln", "pi", "so",
     "bd", "cd", "mi", "or", "ex", "do", "su", "sg", "st",
     "ow", "tw", "ca", "mh", "cl", NULL
-  };
+};
 
 /* Buffer for color sequences */
 static char *color_buf;

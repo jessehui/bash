@@ -75,255 +75,261 @@ static int id_prall ();
 
 int
 id_builtin (list)
-     WORD_LIST *list;
+WORD_LIST *list;
 {
-  int opt;
-  char *user;
+    int opt;
+    char *user;
 
-  id_flags = 0;
-  reset_internal_getopt ();
-  while ((opt = internal_getopt (list, "Ggnru")) != -1)
-    {
-      switch (opt)
-	{
-	case 'G': id_flags |= ID_ALLGROUPS; break;
-	case 'g': id_flags |= ID_GIDONLY; break;
-	case 'n': id_flags |= ID_USENAME; break;
-	case 'r': id_flags |= ID_USEREAL; break;
-	case 'u': id_flags |= ID_USERONLY; break;
-	CASE_HELPOPT;
-	default:
-	  builtin_usage ();
-	  return (EX_USAGE);
-	}
+    id_flags = 0;
+    reset_internal_getopt ();
+    while ((opt = internal_getopt (list, "Ggnru")) != -1) {
+        switch (opt) {
+            case 'G':
+                id_flags |= ID_ALLGROUPS;
+                break;
+            case 'g':
+                id_flags |= ID_GIDONLY;
+                break;
+            case 'n':
+                id_flags |= ID_USENAME;
+                break;
+            case 'r':
+                id_flags |= ID_USEREAL;
+                break;
+            case 'u':
+                id_flags |= ID_USERONLY;
+                break;
+                CASE_HELPOPT;
+            default:
+                builtin_usage ();
+                return (EX_USAGE);
+        }
     }
-  list = loptend;
+    list = loptend;
 
-  user = list ? list->word->word : (char *)NULL;
+    user = list ? list->word->word : (char *)NULL;
 
-  /* Check for some invalid option combinations */
-  opt = ID_FLAGSET (ID_ALLGROUPS) + ID_FLAGSET (ID_GIDONLY) + ID_FLAGSET (ID_USERONLY);
-  if (opt > 1 || (opt == 0 && ((id_flags & (ID_USEREAL|ID_USENAME)) != 0)))
-    {
-      builtin_usage ();
-      return (EX_USAGE);
+    /* Check for some invalid option combinations */
+    opt = ID_FLAGSET (ID_ALLGROUPS) + ID_FLAGSET (ID_GIDONLY) + ID_FLAGSET (ID_USERONLY);
+    if (opt > 1 || (opt == 0 && ((id_flags & (ID_USEREAL | ID_USENAME)) != 0))) {
+        builtin_usage ();
+        return (EX_USAGE);
     }
 
-  if (list && list->next)
-    {
-      builtin_usage ();
-      return (EX_USAGE);
+    if (list && list->next) {
+        builtin_usage ();
+        return (EX_USAGE);
     }
 
-  if (inituser (user) < 0)
-    return (EXECUTION_FAILURE);
+    if (inituser (user) < 0) {
+        return (EXECUTION_FAILURE);
+    }
 
-  opt = 0;
-  if (id_flags & ID_USERONLY)
-    opt += id_pruser ((id_flags & ID_USEREAL) ? ruid : euid);
-  else if (id_flags & ID_GIDONLY)
-    opt += id_prgrp ((id_flags & ID_USEREAL) ? rgid : egid);
-  else if (id_flags & ID_ALLGROUPS)
-    opt += id_prgroups (user);
-  else
-    opt += id_prall (user);
-  putchar ('\n');
-  fflush (stdout);
+    opt = 0;
+    if (id_flags & ID_USERONLY) {
+        opt += id_pruser ((id_flags & ID_USEREAL) ? ruid : euid);
+    } else if (id_flags & ID_GIDONLY) {
+        opt += id_prgrp ((id_flags & ID_USEREAL) ? rgid : egid);
+    } else if (id_flags & ID_ALLGROUPS) {
+        opt += id_prgroups (user);
+    } else {
+        opt += id_prall (user);
+    }
+    putchar ('\n');
+    fflush (stdout);
 
-  return (opt == 0 ? EXECUTION_SUCCESS : EXECUTION_FAILURE);
+    return (opt == 0 ? EXECUTION_SUCCESS : EXECUTION_FAILURE);
 }
 
 static int
 inituser (uname)
-     char *uname;
+char *uname;
 {
-  struct passwd *pwd;
+    struct passwd *pwd;
 
-  if (uname)
-    {
-      pwd = getpwnam (uname);
-      if (pwd == 0)
-	{
-	  builtin_error ("%s: no such user", uname);
-	  return -1;
-	}
-      ruid = euid = pwd->pw_uid;
-      rgid = egid = pwd->pw_gid;
+    if (uname) {
+        pwd = getpwnam (uname);
+        if (pwd == 0) {
+            builtin_error ("%s: no such user", uname);
+            return -1;
+        }
+        ruid = euid = pwd->pw_uid;
+        rgid = egid = pwd->pw_gid;
+    } else {
+        ruid = current_user.uid;
+        euid = current_user.euid;
+        rgid = current_user.gid;
+        egid = current_user.egid;
     }
-  else
-    {
-      ruid = current_user.uid;
-      euid = current_user.euid;
-      rgid = current_user.gid;
-      egid = current_user.egid;
-    }
-  return 0;
+    return 0;
 }
 
 /* Print the name or value of user ID UID. */
 static int
 id_pruser (uid)
-     int uid;
+int uid;
 {
-  struct passwd *pwd = NULL;
-  int r;
+    struct passwd *pwd = NULL;
+    int r;
 
-  r = 0;
-  if (id_flags & ID_USENAME)
-    {
-      pwd = getpwuid (uid);
-      if (pwd == NULL)
-        r = 1;
+    r = 0;
+    if (id_flags & ID_USENAME) {
+        pwd = getpwuid (uid);
+        if (pwd == NULL) {
+            r = 1;
+        }
     }
-  if (pwd)
-    printf ("%s", pwd->pw_name);
-  else
-    printf ("%u", (unsigned) uid);
-      
-  return r;
+    if (pwd) {
+        printf ("%s", pwd->pw_name);
+    } else {
+        printf ("%u", (unsigned) uid);
+    }
+
+    return r;
 }
 
 /* Print the name or value of group ID GID. */
 
 static int
 id_prgrp (gid)
-     int gid;
+int gid;
 {
-  struct group *grp = NULL;
-  int r;
+    struct group *grp = NULL;
+    int r;
 
-  r = 0;
-  if (id_flags & ID_USENAME)
-    {
-      grp = getgrgid (gid);
-      if (grp == NULL)
-	r = 1;
+    r = 0;
+    if (id_flags & ID_USENAME) {
+        grp = getgrgid (gid);
+        if (grp == NULL) {
+            r = 1;
+        }
     }
 
-  if (grp)
-    printf ("%s", grp->gr_name);
-  else
-    printf ("%u", (unsigned) gid);
+    if (grp) {
+        printf ("%s", grp->gr_name);
+    } else {
+        printf ("%u", (unsigned) gid);
+    }
 
-  return r;
+    return r;
 }
 
 static int
 id_prgroups (uname)
-     char *uname;
+char *uname;
 {
-  int *glist, ng, i, r;
+    int *glist, ng, i, r;
 
-  r = 0;
-  id_prgrp (rgid);
-  if (egid != rgid)
-    {
-      putchar (' ');
-      id_prgrp (egid);
+    r = 0;
+    id_prgrp (rgid);
+    if (egid != rgid) {
+        putchar (' ');
+        id_prgrp (egid);
     }
 
-  if (uname)
-    {
-      builtin_error ("supplementary groups for other users not yet implemented");
-      glist = (int *)NULL;
-      ng = 0;
-      r = 1;
+    if (uname) {
+        builtin_error ("supplementary groups for other users not yet implemented");
+        glist = (int *)NULL;
+        ng = 0;
+        r = 1;
+    } else {
+        glist = get_group_array (&ng);
     }
-  else
-    glist = get_group_array (&ng);
 
-  for (i = 0; i < ng; i++)
-    if (glist[i] != rgid && glist[i] != egid)
-      {
-	putchar (' ');
-	id_prgrp (glist[i]);
-      }
-  
-  return r;
+    for (i = 0; i < ng; i++)
+        if (glist[i] != rgid && glist[i] != egid) {
+            putchar (' ');
+            id_prgrp (glist[i]);
+        }
+
+    return r;
 }
 
 static int
 id_prall (uname)
-     char *uname;
+char *uname;
 {
-  int r, i, ng, *glist;
-  struct passwd *pwd;
-  struct group *grp;
+    int r, i, ng, *glist;
+    struct passwd *pwd;
+    struct group *grp;
 
-  r = 0;
-  printf ("uid=%u", (unsigned) ruid);
-  pwd = getpwuid (ruid);
-  if (pwd == NULL)
-    r = 1;
-  else
-    printf ("(%s)", pwd->pw_name);
-
-  printf (" gid=%u", (unsigned) rgid);
-  grp = getgrgid (rgid);
-  if (grp == NULL)
-    r = 1;
-  else
-    printf ("(%s)", grp->gr_name);
-
-  if (euid != ruid)
-    { 
-      printf (" euid=%u", (unsigned) euid);
-      pwd = getpwuid (euid);
-      if (pwd == NULL)
-	r = 1;
-      else 
-	printf ("(%s)", pwd->pw_name);
+    r = 0;
+    printf ("uid=%u", (unsigned) ruid);
+    pwd = getpwuid (ruid);
+    if (pwd == NULL) {
+        r = 1;
+    } else {
+        printf ("(%s)", pwd->pw_name);
     }
 
-  if (egid != rgid) 
-    {
-      printf (" egid=%u", (unsigned) egid);
-      grp = getgrgid (egid);
-      if (grp == NULL)
-	r = 1;
-      else
-	printf ("(%s)", grp->gr_name);
+    printf (" gid=%u", (unsigned) rgid);
+    grp = getgrgid (rgid);
+    if (grp == NULL) {
+        r = 1;
+    } else {
+        printf ("(%s)", grp->gr_name);
     }
 
-  if (uname)
-    {
-      builtin_error ("supplementary groups for other users not yet implemented");
-      glist = (int *)NULL;
-      ng = 0;
-      r = 1;
-    }
-  else
-    glist = get_group_array (&ng);
-
-  if (ng > 0)
-    printf (" groups=");
-  for (i = 0; i < ng; i++)
-    {
-      if (i > 0)
-	printf (", ");
-      printf ("%u", (unsigned) glist[i]);
-      grp = getgrgid (glist[i]);
-      if (grp == NULL)
-	r = 1;
-      else
-	printf ("(%s)", grp->gr_name);
+    if (euid != ruid) {
+        printf (" euid=%u", (unsigned) euid);
+        pwd = getpwuid (euid);
+        if (pwd == NULL) {
+            r = 1;
+        } else {
+            printf ("(%s)", pwd->pw_name);
+        }
     }
 
-  return r;
+    if (egid != rgid) {
+        printf (" egid=%u", (unsigned) egid);
+        grp = getgrgid (egid);
+        if (grp == NULL) {
+            r = 1;
+        } else {
+            printf ("(%s)", grp->gr_name);
+        }
+    }
+
+    if (uname) {
+        builtin_error ("supplementary groups for other users not yet implemented");
+        glist = (int *)NULL;
+        ng = 0;
+        r = 1;
+    } else {
+        glist = get_group_array (&ng);
+    }
+
+    if (ng > 0) {
+        printf (" groups=");
+    }
+    for (i = 0; i < ng; i++) {
+        if (i > 0) {
+            printf (", ");
+        }
+        printf ("%u", (unsigned) glist[i]);
+        grp = getgrgid (glist[i]);
+        if (grp == NULL) {
+            r = 1;
+        } else {
+            printf ("(%s)", grp->gr_name);
+        }
+    }
+
+    return r;
 }
 
 char *id_doc[] = {
-	"Display information about user."
-	"",
-	"Return information about user identity",
-	(char *)NULL
+    "Display information about user."
+    "",
+    "Return information about user identity",
+    (char *)NULL
 };
 
 struct builtin id_struct = {
-	"id",
-	id_builtin,
-	BUILTIN_ENABLED,
-	id_doc,
-	"id [user]\n\tid -G [-n] [user]\n\tid -g [-nr] [user]\n\tid -u [-nr] [user]",
-	0
+    "id",
+    id_builtin,
+    BUILTIN_ENABLED,
+    id_doc,
+    "id [user]\n\tid -G [-n] [user]\n\tid -g [-nr] [user]\n\tid -u [-nr] [user]",
+    0
 };

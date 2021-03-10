@@ -26,13 +26,13 @@
 
 /* Instructions describing what kind of thing to do for a redirection. */
 enum r_instruction {
-  r_output_direction, r_input_direction, r_inputa_direction,
-  r_appending_to, r_reading_until, r_reading_string,
-  r_duplicating_input, r_duplicating_output, r_deblank_reading_until,
-  r_close_this, r_err_and_out, r_input_output, r_output_force,
-  r_duplicating_input_word, r_duplicating_output_word,
-  r_move_input, r_move_output, r_move_input_word, r_move_output_word,
-  r_append_err_and_out
+    r_output_direction, r_input_direction, r_inputa_direction,
+    r_appending_to, r_reading_until, r_reading_string,
+    r_duplicating_input, r_duplicating_output, r_deblank_reading_until,
+    r_close_this, r_err_and_out, r_input_output, r_output_force,
+    r_duplicating_input_word, r_duplicating_output_word,
+    r_move_input, r_move_output, r_move_input_word, r_move_output_word,
+    r_append_err_and_out
 };
 
 /* Redirection flags; values for rflags */
@@ -69,8 +69,9 @@ enum r_instruction {
 
 /* Command Types: */
 enum command_type { cm_for, cm_case, cm_while, cm_if, cm_simple, cm_select,
-		    cm_connection, cm_function_def, cm_until, cm_group,
-		    cm_arith, cm_cond, cm_arith_for, cm_subshell, cm_coproc };
+                    cm_connection, cm_function_def, cm_until, cm_group,
+                    cm_arith, cm_cond, cm_arith_for, cm_subshell, cm_coproc
+                  };
 
 /* Possible values for the `flags' field of a WORD_DESC. */
 #define W_HASDOLLAR	(1 << 0)	/* Dollar sign present. */
@@ -127,14 +128,14 @@ enum command_type { cm_for, cm_case, cm_while, cm_if, cm_simple, cm_select,
 
 /* A structure which represents a word. */
 typedef struct word_desc {
-  char *word;		/* Zero terminated string. */
-  int flags;		/* Flags associated with this word. */
+    char *word;		/* Zero terminated string. */
+    int flags;		/* Flags associated with this word. */
 } WORD_DESC;
 
 /* A linked list of words. */
 typedef struct word_list {
-  struct word_list *next;
-  WORD_DESC *word;
+    struct word_list *next;
+    WORD_DESC *word;
 } WORD_LIST;
 
 
@@ -150,27 +151,27 @@ typedef struct word_list {
    negative DEST. */
 
 typedef union {
-  int dest;			/* Place to redirect REDIRECTOR to, or ... */
-  WORD_DESC *filename;		/* filename to redirect to. */
+    int dest;			/* Place to redirect REDIRECTOR to, or ... */
+    WORD_DESC *filename;		/* filename to redirect to. */
 } REDIRECTEE;
 
 /* Structure describing a redirection.  If REDIRECTOR is negative, the parser
    (or translator in redir.c) encountered an out-of-range file descriptor. */
 typedef struct redirect {
-  struct redirect *next;	/* Next element, or NULL. */
-  REDIRECTEE redirector;	/* Descriptor or varname to be redirected. */
-  int rflags;			/* Private flags for this redirection */
-  int flags;			/* Flag value for `open'. */
-  enum r_instruction  instruction; /* What to do with the information. */
-  REDIRECTEE redirectee;	/* File descriptor or filename */
-  char *here_doc_eof;		/* The word that appeared in <<foo. */
+    struct redirect *next;	/* Next element, or NULL. */
+    REDIRECTEE redirector;	/* Descriptor or varname to be redirected. */
+    int rflags;			/* Private flags for this redirection */
+    int flags;			/* Flag value for `open'. */
+    enum r_instruction  instruction; /* What to do with the information. */
+    REDIRECTEE redirectee;	/* File descriptor or filename */
+    char *here_doc_eof;		/* The word that appeared in <<foo. */
 } REDIRECT;
 
 /* An element used in parsing.  A single word or a single redirection.
    This is an ephemeral construct. */
 typedef struct element {
-  WORD_DESC *word;
-  REDIRECT *redirect;
+    WORD_DESC *word;
+    REDIRECT *redirect;
 } ELEMENT;
 
 /* Possible values for command->flags. */
@@ -193,42 +194,42 @@ typedef struct element {
 
 /* What a command looks like. */
 typedef struct command {
-  enum command_type type;	/* FOR CASE WHILE IF CONNECTION or SIMPLE. */
-  int flags;			/* Flags controlling execution environment. */
-  int line;			/* line number the command starts on */
-  REDIRECT *redirects;		/* Special redirects for FOR CASE, etc. */
-  union {
-    struct for_com *For;
-    struct case_com *Case;
-    struct while_com *While;
-    struct if_com *If;
-    struct connection *Connection;
-    struct simple_com *Simple;
-    struct function_def *Function_def;
-    struct group_com *Group;
+    enum command_type type;	/* FOR CASE WHILE IF CONNECTION or SIMPLE. */
+    int flags;			/* Flags controlling execution environment. */
+    int line;			/* line number the command starts on */
+    REDIRECT *redirects;		/* Special redirects for FOR CASE, etc. */
+    union {
+        struct for_com *For;
+        struct case_com *Case;
+        struct while_com *While;
+        struct if_com *If;
+        struct connection *Connection;
+        struct simple_com *Simple;
+        struct function_def *Function_def;
+        struct group_com *Group;
 #if defined (SELECT_COMMAND)
-    struct select_com *Select;
+        struct select_com *Select;
 #endif
 #if defined (DPAREN_ARITHMETIC)
-    struct arith_com *Arith;
+        struct arith_com *Arith;
 #endif
 #if defined (COND_COMMAND)
-    struct cond_com *Cond;
+        struct cond_com *Cond;
 #endif
 #if defined (ARITH_FOR_COMMAND)
-    struct arith_for_com *ArithFor;
+        struct arith_for_com *ArithFor;
 #endif
-    struct subshell_com *Subshell;
-    struct coproc_com *Coproc;
-  } value;
+        struct subshell_com *Subshell;
+        struct coproc_com *Coproc;
+    } value;
 } COMMAND;
 
 /* Structure used to represent the CONNECTION type. */
 typedef struct connection {
-  int ignore;			/* Unused; simplifies make_command (). */
-  COMMAND *first;		/* Pointer to the first command. */
-  COMMAND *second;		/* Pointer to the second command. */
-  int connector;		/* What separates this command from others. */
+    int ignore;			/* Unused; simplifies make_command (). */
+    COMMAND *first;		/* Pointer to the first command. */
+    COMMAND *second;		/* Pointer to the second command. */
+    int connector;		/* What separates this command from others. */
 } CONNECTION;
 
 /* Structures used to represent the CASE command. */
@@ -239,50 +240,50 @@ typedef struct connection {
 
 /* Pattern/action structure for CASE_COM. */
 typedef struct pattern_list {
-  struct pattern_list *next;	/* Clause to try in case this one failed. */
-  WORD_LIST *patterns;		/* Linked list of patterns to test. */
-  COMMAND *action;		/* Thing to execute if a pattern matches. */
-  int flags;
+    struct pattern_list *next;	/* Clause to try in case this one failed. */
+    WORD_LIST *patterns;		/* Linked list of patterns to test. */
+    COMMAND *action;		/* Thing to execute if a pattern matches. */
+    int flags;
 } PATTERN_LIST;
 
 /* The CASE command. */
 typedef struct case_com {
-  int flags;			/* See description of CMD flags. */
-  int line;			/* line number the `case' keyword appears on */
-  WORD_DESC *word;		/* The thing to test. */
-  PATTERN_LIST *clauses;	/* The clauses to test against, or NULL. */
+    int flags;			/* See description of CMD flags. */
+    int line;			/* line number the `case' keyword appears on */
+    WORD_DESC *word;		/* The thing to test. */
+    PATTERN_LIST *clauses;	/* The clauses to test against, or NULL. */
 } CASE_COM;
 
 /* FOR command. */
 typedef struct for_com {
-  int flags;		/* See description of CMD flags. */
-  int line;		/* line number the `for' keyword appears on */
-  WORD_DESC *name;	/* The variable name to get mapped over. */
-  WORD_LIST *map_list;	/* The things to map over.  This is never NULL. */
-  COMMAND *action;	/* The action to execute.
+    int flags;		/* See description of CMD flags. */
+    int line;		/* line number the `for' keyword appears on */
+    WORD_DESC *name;	/* The variable name to get mapped over. */
+    WORD_LIST *map_list;	/* The things to map over.  This is never NULL. */
+    COMMAND *action;	/* The action to execute.
 			   During execution, NAME is bound to successive
 			   members of MAP_LIST. */
 } FOR_COM;
 
 #if defined (ARITH_FOR_COMMAND)
 typedef struct arith_for_com {
-  int flags;
-  int line;	/* generally used for error messages */
-  WORD_LIST *init;
-  WORD_LIST *test;
-  WORD_LIST *step;
-  COMMAND *action;
+    int flags;
+    int line;	/* generally used for error messages */
+    WORD_LIST *init;
+    WORD_LIST *test;
+    WORD_LIST *step;
+    COMMAND *action;
 } ARITH_FOR_COM;
 #endif
 
 #if defined (SELECT_COMMAND)
 /* KSH SELECT command. */
 typedef struct select_com {
-  int flags;		/* See description of CMD flags. */
-  int line;		/* line number the `select' keyword appears on */
-  WORD_DESC *name;	/* The variable name to get mapped over. */
-  WORD_LIST *map_list;	/* The things to map over.  This is never NULL. */
-  COMMAND *action;	/* The action to execute.
+    int flags;		/* See description of CMD flags. */
+    int line;		/* line number the `select' keyword appears on */
+    WORD_DESC *name;	/* The variable name to get mapped over. */
+    WORD_LIST *map_list;	/* The things to map over.  This is never NULL. */
+    COMMAND *action;	/* The action to execute.
 			   During execution, NAME is bound to the member of
 			   MAP_LIST chosen by the user. */
 } SELECT_COM;
@@ -290,17 +291,17 @@ typedef struct select_com {
 
 /* IF command. */
 typedef struct if_com {
-  int flags;			/* See description of CMD flags. */
-  COMMAND *test;		/* Thing to test. */
-  COMMAND *true_case;		/* What to do if the test returned non-zero. */
-  COMMAND *false_case;		/* What to do if the test returned zero. */
+    int flags;			/* See description of CMD flags. */
+    COMMAND *test;		/* Thing to test. */
+    COMMAND *true_case;		/* What to do if the test returned non-zero. */
+    COMMAND *false_case;		/* What to do if the test returned zero. */
 } IF_COM;
 
 /* WHILE command. */
 typedef struct while_com {
-  int flags;			/* See description of CMD flags. */
-  COMMAND *test;		/* Thing to test. */
-  COMMAND *action;		/* Thing to do while test is non-zero. */
+    int flags;			/* See description of CMD flags. */
+    COMMAND *test;		/* Thing to test. */
+    COMMAND *action;		/* Thing to do while test is non-zero. */
 } WHILE_COM;
 
 #if defined (DPAREN_ARITHMETIC)
@@ -308,9 +309,9 @@ typedef struct while_com {
    a WORD_LIST, of which the first element is the only one used, for the
    time being. */
 typedef struct arith_com {
-  int flags;
-  int line;
-  WORD_LIST *exp;
+    int flags;
+    int line;
+    WORD_LIST *exp;
 } ARITH_COM;
 #endif /* DPAREN_ARITHMETIC */
 
@@ -324,63 +325,63 @@ typedef struct arith_com {
 #define COND_EXPR	6
 
 typedef struct cond_com {
-  int flags;
-  int line;
-  int type;
-  WORD_DESC *op;
-  struct cond_com *left, *right;
+    int flags;
+    int line;
+    int type;
+    WORD_DESC *op;
+    struct cond_com *left, *right;
 } COND_COM;
 
 /* The "simple" command.  Just a collection of words and redirects. */
 typedef struct simple_com {
-  int flags;			/* See description of CMD flags. */
-  int line;			/* line number the command starts on */
-  WORD_LIST *words;		/* The program name, the arguments,
+    int flags;			/* See description of CMD flags. */
+    int line;			/* line number the command starts on */
+    WORD_LIST *words;		/* The program name, the arguments,
 				   variable assignments, etc. */
-  REDIRECT *redirects;		/* Redirections to perform. */
+    REDIRECT *redirects;		/* Redirections to perform. */
 } SIMPLE_COM;
 
 /* The "function definition" command. */
 typedef struct function_def {
-  int flags;			/* See description of CMD flags. */
-  int line;			/* Line number the function def starts on. */
-  WORD_DESC *name;		/* The name of the function. */
-  COMMAND *command;		/* The parsed execution tree. */
-  char *source_file;		/* file in which function was defined, if any */
+    int flags;			/* See description of CMD flags. */
+    int line;			/* Line number the function def starts on. */
+    WORD_DESC *name;		/* The name of the function. */
+    COMMAND *command;		/* The parsed execution tree. */
+    char *source_file;		/* file in which function was defined, if any */
 } FUNCTION_DEF;
 
 /* A command that is `grouped' allows pipes and redirections to affect all
    commands in the group. */
 typedef struct group_com {
-  int ignore;			/* See description of CMD flags. */
-  COMMAND *command;
+    int ignore;			/* See description of CMD flags. */
+    COMMAND *command;
 } GROUP_COM;
 
 typedef struct subshell_com {
-  int flags;
-  int line;
-  COMMAND *command;
+    int flags;
+    int line;
+    COMMAND *command;
 } SUBSHELL_COM;
 
 #define COPROC_RUNNING	0x01
 #define COPROC_DEAD	0x02
 
 typedef struct coproc {
-  char *c_name;
-  pid_t c_pid;
-  int c_rfd;
-  int c_wfd;
-  int c_rsave;
-  int c_wsave;
-  int c_flags;
-  int c_status;
-  int c_lock;
+    char *c_name;
+    pid_t c_pid;
+    int c_rfd;
+    int c_wfd;
+    int c_rsave;
+    int c_wsave;
+    int c_flags;
+    int c_status;
+    int c_lock;
 } Coproc;
 
 typedef struct coproc_com {
-  int flags;
-  char *name;
-  COMMAND *command;
+    int flags;
+    char *name;
+    COMMAND *command;
 } COPROC_COM;
 
 extern COMMAND *global_command;

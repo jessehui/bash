@@ -4,7 +4,7 @@
 /* Copyright (C) 1997-2009,2017 Free Software Foundation, Inc.
 
    This file is part of the GNU Readline Library (Readline), a library
-   for reading lines of text with interactive input and history editing.      
+   for reading lines of text with interactive input and history editing.
 
    Readline is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -92,31 +92,28 @@ extern struct passwd *getpwuid PARAMS((uid_t));
 
 /* Does shell-like quoting using single quotes. */
 char *
-sh_single_quote (char *string)
-{
-  register int c;
-  char *result, *r, *s;
+sh_single_quote (char *string) {
+    register int c;
+    char *result, *r, *s;
 
-  result = (char *)xmalloc (3 + (4 * strlen (string)));
-  r = result;
-  *r++ = '\'';
+    result = (char *)xmalloc (3 + (4 * strlen (string)));
+    r = result;
+    *r++ = '\'';
 
-  for (s = string; s && (c = *s); s++)
-    {
-      *r++ = c;
+    for (s = string; s && (c = *s); s++) {
+        *r++ = c;
 
-      if (c == '\'')
-	{
-	  *r++ = '\\';	/* insert escaped single quote */
-	  *r++ = '\'';
-	  *r++ = '\'';	/* start new quoted string */
-	}
+        if (c == '\'') {
+            *r++ = '\\';	/* insert escaped single quote */
+            *r++ = '\'';
+            *r++ = '\'';	/* start new quoted string */
+        }
     }
 
-  *r++ = '\'';
-  *r = '\0';
+    *r++ = '\'';
+    *r = '\0';
 
-  return (result);
+    return (result);
 }
 
 /* Set the environment variables LINES and COLUMNS to lines and cols,
@@ -126,56 +123,55 @@ static char putenv_buf1[INT_STRLEN_BOUND (int) + 6 + 1];	/* sizeof("LINES=") == 
 static char putenv_buf2[INT_STRLEN_BOUND (int) + 8 + 1];	/* sizeof("COLUMNS=") == 8 */
 
 void
-sh_set_lines_and_columns (int lines, int cols)
-{
+sh_set_lines_and_columns (int lines, int cols) {
 #if defined (HAVE_SETENV)
-  sprintf (setenv_buf, "%d", lines);
-  setenv ("LINES", setenv_buf, 1);
+    sprintf (setenv_buf, "%d", lines);
+    setenv ("LINES", setenv_buf, 1);
 
-  sprintf (setenv_buf, "%d", cols);
-  setenv ("COLUMNS", setenv_buf, 1);
+    sprintf (setenv_buf, "%d", cols);
+    setenv ("COLUMNS", setenv_buf, 1);
 #else /* !HAVE_SETENV */
 #  if defined (HAVE_PUTENV)
-  sprintf (putenv_buf1, "LINES=%d", lines);
-  putenv (putenv_buf1);
+    sprintf (putenv_buf1, "LINES=%d", lines);
+    putenv (putenv_buf1);
 
-  sprintf (putenv_buf2, "COLUMNS=%d", cols);
-  putenv (putenv_buf2);
+    sprintf (putenv_buf2, "COLUMNS=%d", cols);
+    putenv (putenv_buf2);
 #  endif /* HAVE_PUTENV */
 #endif /* !HAVE_SETENV */
 }
 
 char *
-sh_get_env_value (const char *varname)
-{
-  return ((char *)getenv (varname));
+sh_get_env_value (const char *varname) {
+    return ((char *)getenv (varname));
 }
 
 char *
-sh_get_home_dir (void)
-{
-  static char *home_dir = (char *)NULL;
-  struct passwd *entry;
+sh_get_home_dir (void) {
+    static char *home_dir = (char *)NULL;
+    struct passwd *entry;
 
-  if (home_dir)
-    return (home_dir);
+    if (home_dir) {
+        return (home_dir);
+    }
 
-  home_dir = (char *)NULL;
+    home_dir = (char *)NULL;
 #if defined (HAVE_GETPWUID)
 #  if defined (__TANDEM)
-  entry = getpwnam (getlogin ());
+    entry = getpwnam (getlogin ());
 #  else
-  entry = getpwuid (getuid ());
+    entry = getpwuid (getuid ());
 #  endif
-  if (entry)
-    home_dir = savestring (entry->pw_dir);
+    if (entry) {
+        home_dir = savestring (entry->pw_dir);
+    }
 #endif
 
 #if defined (HAVE_GETPWENT)
-  endpwent ();		/* some systems need this */
+    endpwent ();		/* some systems need this */
 #endif
 
-  return (home_dir);
+    return (home_dir);
 }
 
 #if !defined (O_NDELAY)
@@ -185,30 +181,29 @@ sh_get_home_dir (void)
 #endif
 
 int
-sh_unset_nodelay_mode (int fd)
-{
+sh_unset_nodelay_mode (int fd) {
 #if defined (HAVE_FCNTL)
-  int flags, bflags;
+    int flags, bflags;
 
-  if ((flags = fcntl (fd, F_GETFL, 0)) < 0)
-    return -1;
+    if ((flags = fcntl (fd, F_GETFL, 0)) < 0) {
+        return -1;
+    }
 
-  bflags = 0;
+    bflags = 0;
 
 #ifdef O_NONBLOCK
-  bflags |= O_NONBLOCK;
+    bflags |= O_NONBLOCK;
 #endif
 
 #ifdef O_NDELAY
-  bflags |= O_NDELAY;
+    bflags |= O_NDELAY;
 #endif
 
-  if (flags & bflags)
-    {
-      flags &= ~bflags;
-      return (fcntl (fd, F_SETFL, flags));
+    if (flags & bflags) {
+        flags &= ~bflags;
+        return (fcntl (fd, F_SETFL, flags));
     }
 #endif
 
-  return 0;
+    return 0;
 }

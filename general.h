@@ -133,14 +133,14 @@ extern char *strcpy PARAMS((char *, const char *));
    as the first field in the struct.  This means that functions
    can be written to handle the general case for linked lists. */
 typedef struct g_list {
-  struct g_list *next;
+    struct g_list *next;
 } GENERIC_LIST;
 
 /* Here is a generic structure for associating character strings
    with integers.  It is used in the parser for shell tokenization. */
 typedef struct {
-  char *word;
-  int token;
+    char *word;
+    int token;
 } STRING_INT_ALIST;
 
 /* A macro to avoid making an unnecessary function call. */
@@ -265,7 +265,7 @@ typedef int sh_builtin_func_t PARAMS((WORD_LIST *)); /* sh_wlist_func_t */
 typedef int QSFUNC (const void *, const void *);
 #else
 typedef int QSFUNC ();
-#endif 
+#endif
 
 /* Some useful definitions for Unix pathnames.  Argument convention:
    x == string, c == character */
@@ -342,8 +342,8 @@ extern int sh_openpipe PARAMS((int *));
 extern int sh_closepipe PARAMS((int *));
 
 extern int file_exists PARAMS((const char *));
-extern int file_isdir PARAMS((const char  *));
-extern int file_iswdir PARAMS((const char  *));
+extern int file_isdir PARAMS((const char *));
+extern int file_iswdir PARAMS((const char *));
 extern int path_dot_or_dotdot PARAMS((const char *));
 extern int absolute_pathname PARAMS((const char *));
 extern int absolute_program PARAMS((const char *));

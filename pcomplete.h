@@ -26,17 +26,17 @@
 #include "hashlib.h"
 
 typedef struct compspec {
-  int refcount;
-  unsigned long actions;
-  unsigned long options;
-  char *globpat;
-  char *words;
-  char *prefix;
-  char *suffix;
-  char *funcname;
-  char *command;
-  char *lcommand;
-  char *filterpat;
+    int refcount;
+    unsigned long actions;
+    unsigned long options;
+    char *globpat;
+    char *words;
+    char *prefix;
+    char *suffix;
+    char *funcname;
+    char *command;
+    char *lcommand;
+    char *filterpat;
 } COMPSPEC;
 
 /* Values for COMPSPEC actions.  These are things the shell knows how to
@@ -86,14 +86,15 @@ typedef struct compspec {
 /* List of items is used by the code that implements the programmable
    completions. */
 typedef struct _list_of_items {
-  int flags;
-  int (*list_getter) PARAMS((struct _list_of_items *));	/* function to call to get the list */
+    int flags;
+    int (*list_getter) PARAMS((struct _list_of_items
+                               *));	/* function to call to get the list */
 
-  STRINGLIST *slist;
+    STRINGLIST *slist;
 
-  /* These may or may not be used. */
-  STRINGLIST *genlist;	/* for handing to the completion code one item at a time */
-  int genindex;		/* index of item last handed to completion code */
+    /* These may or may not be used. */
+    STRINGLIST *genlist;	/* for handing to the completion code one item at a time */
+    int genindex;		/* index of item last handed to completion code */
 
 } ITEMLIST;
 
@@ -169,8 +170,10 @@ extern void set_itemlist_dirty PARAMS((ITEMLIST *));
 
 extern STRINGLIST *completions_to_stringlist PARAMS((char **));
 
-extern STRINGLIST *gen_compspec_completions PARAMS((COMPSPEC *, const char *, const char *, int, int, int *));
-extern char **programmable_completions PARAMS((const char *, const char *, int, int, int *));
+extern STRINGLIST *gen_compspec_completions PARAMS((COMPSPEC *, const char *,
+        const char *, int, int, int *));
+extern char **programmable_completions PARAMS((const char *, const char *, int, int,
+        int *));
 
 extern void pcomp_set_readline_variables PARAMS((int, int));
 extern void pcomp_set_compspec_options PARAMS((COMPSPEC *, int, int));

@@ -32,17 +32,17 @@
 #endif
 
 typedef struct bucket_contents {
-  struct bucket_contents *next;	/* Link to next hashed key in this bucket. */
-  char *key;			/* What we look up. */
-  PTR_T data;			/* What we really want. */
-  unsigned int khash;		/* What key hashes to */
-  int times_found;		/* Number of times this item has been found. */
+    struct bucket_contents *next;	/* Link to next hashed key in this bucket. */
+    char *key;			/* What we look up. */
+    PTR_T data;			/* What we really want. */
+    unsigned int khash;		/* What key hashes to */
+    int times_found;		/* Number of times this item has been found. */
 } BUCKET_CONTENTS;
 
 typedef struct hash_table {
-  BUCKET_CONTENTS **bucket_array;	/* Where the data is kept. */
-  int nbuckets;			/* How many buckets does this table have. */
-  int nentries;			/* How many entries does this table have. */
+    BUCKET_CONTENTS **bucket_array;	/* Where the data is kept. */
+    int nbuckets;			/* How many buckets does this table have. */
+    int nentries;			/* How many entries does this table have. */
 } HASH_TABLE;
 
 typedef int hash_wfunc PARAMS((BUCKET_CONTENTS *));

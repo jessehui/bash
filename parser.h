@@ -51,15 +51,15 @@
 
 /* Definition of the delimiter stack.  Needed by parse.y and bashhist.c. */
 struct dstack {
-/* DELIMITERS is a stack of the nested delimiters that we have
-   encountered so far. */
-  char *delimiters;
+    /* DELIMITERS is a stack of the nested delimiters that we have
+       encountered so far. */
+    char *delimiters;
 
-/* Offset into the stack of delimiters. */
-  int delimiter_depth;
+    /* Offset into the stack of delimiters. */
+    int delimiter_depth;
 
-/* How many slots are allocated to DELIMITERS. */
-  int delimiter_space;
+    /* How many slots are allocated to DELIMITERS. */
+    int delimiter_space;
 };
 
 /* States we can be in while scanning a ${...} expansion.  Shared between

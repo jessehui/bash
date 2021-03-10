@@ -28,18 +28,18 @@
 
 /* Data from readdir (). */
 struct direct {
-  long d_ino;			/* Inode number of entry. */
-  unsigned short d_reclen;	/* Length of this record. */
-  unsigned short d_namlen;	/* Length of string in d_name. */
-  char d_name[MAXNAMLEN + 1];	/* Name of file. */
+    long d_ino;			/* Inode number of entry. */
+    unsigned short d_reclen;	/* Length of this record. */
+    unsigned short d_namlen;	/* Length of string in d_name. */
+    char d_name[MAXNAMLEN + 1];	/* Name of file. */
 };
 
 /* Stream data from opendir (). */
 typedef struct {
-  int dd_fd;			/* File descriptor. */
-  int dd_loc;			/* Offset in block. */
-  int dd_size;			/* Amount of valid data. */
-  char	dd_buf[DIRBLKSIZ];	/* Directory block. */
+    int dd_fd;			/* File descriptor. */
+    int dd_loc;			/* Offset in block. */
+    int dd_size;			/* Amount of valid data. */
+    char	dd_buf[DIRBLKSIZ];	/* Directory block. */
 } DIR;
 
 extern DIR *opendir ();

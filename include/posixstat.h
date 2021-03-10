@@ -133,8 +133,8 @@
 #  define S_IRWXG	(S_IRGRP | S_IWGRP | S_IXGRP)
 #  define S_IRWXO	(S_IROTH | S_IWOTH | S_IXOTH)
 #else /* !S_IRWXU */
-  /* S_IRWXU is defined, but "group" and "other" bits might not be
-     (happens in certain versions of MinGW).  */
+/* S_IRWXU is defined, but "group" and "other" bits might not be
+   (happens in certain versions of MinGW).  */
 #  if !defined (S_IRGRP)
 #    define S_IRGRP	(S_IREAD  >> 3)		/* read, group */
 #    define S_IWGRP	(S_IWRITE >> 3)		/* write, group */

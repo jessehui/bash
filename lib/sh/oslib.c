@@ -55,29 +55,31 @@ extern int errno;
 #if !defined (HAVE_STRCHR)
 char *
 strchr (string, c)
-     char *string;
-     int c;
+char *string;
+int c;
 {
-  register char *s;
+    register char *s;
 
-  for (s = string; s && *s; s++)
-    if (*s == c)
-      return (s);
+    for (s = string; s && *s; s++)
+        if (*s == c) {
+            return (s);
+        }
 
-  return ((char *) NULL);
+    return ((char *) NULL);
 }
 
 char *
 strrchr (string, c)
-     char *string;
-     int c;
+char *string;
+int c;
 {
-  register char *s, *t;
+    register char *s, *t;
 
-  for (s = string, t = (char *)NULL; s && *s; s++)
-    if (*s == c)
-      t = s;
-  return (t);
+    for (s = string, t = (char *)NULL; s && *s; s++)
+        if (*s == c) {
+            t = s;
+        }
+    return (t);
 }
 #endif /* !HAVE_STRCHR */
 
@@ -86,38 +88,39 @@ strrchr (string, c)
    or supply one with broken behaviour. */
 int
 dup2 (fd1, fd2)
-     int fd1, fd2;
+int fd1, fd2;
 {
-  int saved_errno, r;
+    int saved_errno, r;
 
-  /* If FD1 is not a valid file descriptor, then return immediately with
-     an error. */
-  if (fcntl (fd1, F_GETFL, 0) == -1)
-    return (-1);
-
-  if (fd2 < 0 || fd2 >= getdtablesize ())
-    {
-      errno = EBADF;
-      return (-1);
+    /* If FD1 is not a valid file descriptor, then return immediately with
+       an error. */
+    if (fcntl (fd1, F_GETFL, 0) == -1) {
+        return (-1);
     }
 
-  if (fd1 == fd2)
-    return (0);
+    if (fd2 < 0 || fd2 >= getdtablesize ()) {
+        errno = EBADF;
+        return (-1);
+    }
 
-  saved_errno = errno;
+    if (fd1 == fd2) {
+        return (0);
+    }
 
-  (void) close (fd2);
-  r = fcntl (fd1, F_DUPFD, fd2);
+    saved_errno = errno;
 
-  if (r >= 0)
-    errno = saved_errno;
-  else
-    if (errno == EINVAL)
-      errno = EBADF;
+    (void) close (fd2);
+    r = fcntl (fd1, F_DUPFD, fd2);
 
-  /* Force the new file descriptor to remain open across exec () calls. */
-  SET_OPEN_ON_EXEC (fd2);
-  return (r);
+    if (r >= 0) {
+        errno = saved_errno;
+    } else if (errno == EINVAL) {
+        errno = EBADF;
+    }
+
+    /* Force the new file descriptor to remain open across exec () calls. */
+    SET_OPEN_ON_EXEC (fd2);
+    return (r);
 }
 #endif /* !HAVE_DUP2 */
 
@@ -143,18 +146,17 @@ dup2 (fd1, fd2)
 
 #if !defined (HAVE_GETDTABLESIZE)
 int
-getdtablesize ()
-{
+getdtablesize () {
 #  if defined (_POSIX_VERSION) && defined (HAVE_SYSCONF) && defined (_SC_OPEN_MAX)
-  return (sysconf(_SC_OPEN_MAX));	/* Posix systems use sysconf */
+    return (sysconf(_SC_OPEN_MAX));	/* Posix systems use sysconf */
 #  else /* ! (_POSIX_VERSION && HAVE_SYSCONF && _SC_OPEN_MAX) */
 #    if defined (ULIMIT_MAXFDS)
-  return (ulimit (4, 0L));	/* System V.3 systems use ulimit(4, 0L) */
+    return (ulimit (4, 0L));	/* System V.3 systems use ulimit(4, 0L) */
 #    else /* !ULIMIT_MAXFDS */
 #      if defined (NOFILE)	/* Other systems use NOFILE */
-  return (NOFILE);
+    return (NOFILE);
 #      else /* !NOFILE */
-  return (20);			/* XXX - traditional value is 20 */
+    return (20);			/* XXX - traditional value is 20 */
 #      endif /* !NOFILE */
 #    endif /* !ULIMIT_MAXFDS */
 #  endif /* ! (_POSIX_VERSION && _SC_OPEN_MAX) */
@@ -166,11 +168,11 @@ getdtablesize ()
 #    undef bcopy
 #  endif
 void
-bcopy (s,d,n)
-     char *d, *s;
-     int n;
+bcopy (s, d, n)
+char *d, *s;
+int n;
 {
-  FASTCOPY (s, d, n);
+    FASTCOPY (s, d, n);
 }
 #endif /* !HAVE_BCOPY */
 
@@ -180,14 +182,15 @@ bcopy (s,d,n)
 #  endif
 void
 bzero (s, n)
-     char *s;
-     int n;
+char *s;
+int n;
 {
-  register int i;
-  register char *r;
+    register int i;
+    register char *r;
 
-  for (i = 0, r = s; i < n; i++)
-    *r++ = '\0';
+    for (i = 0, r = s; i < n; i++) {
+        *r++ = '\0';
+    }
 }
 #endif
 
@@ -196,29 +199,29 @@ bzero (s, n)
 #    include <sys/utsname.h>
 int
 gethostname (name, namelen)
-     char *name;
-     int namelen;
+char *name;
+int namelen;
 {
-  int i;
-  struct utsname ut;
+    int i;
+    struct utsname ut;
 
-  --namelen;
+    --namelen;
 
-  uname (&ut);
-  i = strlen (ut.nodename) + 1;
-  strncpy (name, ut.nodename, i < namelen ? i : namelen);
-  name[namelen] = '\0';
-  return (0);
+    uname (&ut);
+    i = strlen (ut.nodename) + 1;
+    strncpy (name, ut.nodename, i < namelen ? i : namelen);
+    name[namelen] = '\0';
+    return (0);
 }
 #  else /* !HAVE_UNAME */
 int
 gethostname (name, namelen)
-     char *name;
-     int namelen;
+char *name;
+int namelen;
 {
-  strncpy (name, "unknown", namelen);
-  name[namelen] = '\0';
-  return 0;
+    strncpy (name, "unknown", namelen);
+    name[namelen] = '\0';
+    return 0;
 }
 #  endif /* !HAVE_UNAME */
 #endif /* !HAVE_GETHOSTNAME */
@@ -226,23 +229,23 @@ gethostname (name, namelen)
 #if !defined (HAVE_KILLPG)
 int
 killpg (pgrp, sig)
-     pid_t pgrp;
-     int sig;
+pid_t pgrp;
+int sig;
 {
-  return (kill (-pgrp, sig));
+    return (kill (-pgrp, sig));
 }
 #endif /* !HAVE_KILLPG */
 
 #if !defined (HAVE_MKFIFO) && defined (PROCESS_SUBSTITUTION)
 int
 mkfifo (path, mode)
-     char *path;
-     int mode;
+char *path;
+int mode;
 {
 #if defined (S_IFIFO)
-  return (mknod (path, (mode | S_IFIFO), 0));
+    return (mknod (path, (mode | S_IFIFO), 0));
 #else /* !S_IFIFO */
-  return (-1);
+    return (-1);
 #endif /* !S_IFIFO */
 }
 #endif /* !HAVE_MKFIFO && PROCESS_SUBSTITUTION */
@@ -250,52 +253,53 @@ mkfifo (path, mode)
 #define DEFAULT_MAXGROUPS 64
 
 int
-getmaxgroups ()
-{
-  static int maxgroups = -1;
+getmaxgroups () {
+    static int maxgroups = -1;
 
-  if (maxgroups > 0)
-    return maxgroups;
+    if (maxgroups > 0) {
+        return maxgroups;
+    }
 
 #if defined (HAVE_SYSCONF) && defined (_SC_NGROUPS_MAX)
-  maxgroups = sysconf (_SC_NGROUPS_MAX);
+    maxgroups = sysconf (_SC_NGROUPS_MAX);
 #else
 #  if defined (NGROUPS_MAX)
-  maxgroups = NGROUPS_MAX;
+    maxgroups = NGROUPS_MAX;
 #  else /* !NGROUPS_MAX */
 #    if defined (NGROUPS)
-  maxgroups = NGROUPS;
+    maxgroups = NGROUPS;
 #    else /* !NGROUPS */
-  maxgroups = DEFAULT_MAXGROUPS;
+    maxgroups = DEFAULT_MAXGROUPS;
 #    endif /* !NGROUPS */
-#  endif /* !NGROUPS_MAX */  
+#  endif /* !NGROUPS_MAX */
 #endif /* !HAVE_SYSCONF || !SC_NGROUPS_MAX */
 
-  if (maxgroups <= 0)
-    maxgroups = DEFAULT_MAXGROUPS;
+    if (maxgroups <= 0) {
+        maxgroups = DEFAULT_MAXGROUPS;
+    }
 
-  return maxgroups;
+    return maxgroups;
 }
 
 long
-getmaxchild ()
-{
-  static long maxchild = -1L;
+getmaxchild () {
+    static long maxchild = -1L;
 
-  if (maxchild > 0)
-    return maxchild;
+    if (maxchild > 0) {
+        return maxchild;
+    }
 
 #if defined (HAVE_SYSCONF) && defined (_SC_CHILD_MAX)
-  maxchild = sysconf (_SC_CHILD_MAX);
+    maxchild = sysconf (_SC_CHILD_MAX);
 #else
 #  if defined (CHILD_MAX)
-  maxchild = CHILD_MAX;
+    maxchild = CHILD_MAX;
 #  else
 #    if defined (MAXUPRC)
-  maxchild = MAXUPRC;
+    maxchild = MAXUPRC;
 #    endif /* MAXUPRC */
 #  endif /* CHILD_MAX */
 #endif /* !HAVE_SYSCONF || !_SC_CHILD_MAX */
 
-  return (maxchild);
+    return (maxchild);
 }

@@ -49,31 +49,31 @@ int nw;
 
 sighandler
 sigpipe (sig)
-     int sig;
+int sig;
 {
-  fprintf (stderr, "%d\n", nw);
-  exit (0);
+    fprintf (stderr, "%d\n", nw);
+    exit (0);
 }
 
 int
 main (argc, argv)
-     int argc;
-     char **argv;
+int argc;
+char **argv;
 {
-  char buf[128];
-  register int i;
+    char buf[128];
+    register int i;
 
-  for (i = 0; i < 128; i++)
-    buf[i] = ' ';
-
-  signal (SIGPIPE, sigpipe);
-
-  nw = 0;
-  for (;;)
-    {
-      int n;
-      n = write (1, buf, 128);
-      nw += n;
+    for (i = 0; i < 128; i++) {
+        buf[i] = ' ';
     }
-  return (0);
+
+    signal (SIGPIPE, sigpipe);
+
+    nw = 0;
+    for (;;) {
+        int n;
+        n = write (1, buf, 128);
+        nw += n;
+    }
+    return (0);
 }

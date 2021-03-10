@@ -49,7 +49,8 @@ extern COMMAND *make_until_command PARAMS((COMMAND *, COMMAND *));
 extern COMMAND *make_bare_simple_command PARAMS((void));
 extern COMMAND *make_simple_command PARAMS((ELEMENT, COMMAND *));
 extern void make_here_document PARAMS((REDIRECT *, int));
-extern REDIRECT *make_redirection PARAMS((REDIRECTEE, enum r_instruction, REDIRECTEE, int));
+extern REDIRECT *make_redirection PARAMS((REDIRECTEE, enum r_instruction, REDIRECTEE,
+        int));
 extern COMMAND *make_function_def PARAMS((WORD_DESC *, COMMAND *, int, int));
 extern COMMAND *clean_simple_command PARAMS((COMMAND *));
 

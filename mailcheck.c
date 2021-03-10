@@ -46,12 +46,12 @@ extern time_t shell_start_time;
 extern int mailstat PARAMS((const char *, struct stat *));
 
 typedef struct _fileinfo {
-  char *name;
-  char *msg;
-  time_t access_time;
-  time_t mod_time;
-  off_t file_size;
-  int flags;
+    char *name;
+    char *msg;
+    time_t access_time;
+    time_t mod_time;
+    off_t file_size;
+    int flags;
 } FILEINFO;
 
 /* The list of remembered mail files. */
@@ -82,46 +82,46 @@ static char *parse_mailpath_spec PARAMS((char *));
 
 /* Returns non-zero if it is time to check mail. */
 int
-time_to_check_mail ()
-{
-  char *temp;
-  time_t now;
-  intmax_t seconds;
+time_to_check_mail () {
+    char *temp;
+    time_t now;
+    intmax_t seconds;
 
-  temp = get_string_value ("MAILCHECK");
+    temp = get_string_value ("MAILCHECK");
 
-  /* Negative number, or non-numbers (such as empty string) cause no
-     checking to take place. */
-  if (temp == 0 || legal_number (temp, &seconds) == 0 || seconds < 0)
-    return (0);
+    /* Negative number, or non-numbers (such as empty string) cause no
+       checking to take place. */
+    if (temp == 0 || legal_number (temp, &seconds) == 0 || seconds < 0) {
+        return (0);
+    }
 
-  now = NOW;
-  /* Time to check if MAILCHECK is explicitly set to zero, or if enough
-     time has passed since the last check. */
-  return (seconds == 0 || ((now - last_time_mail_checked) >= seconds));
+    now = NOW;
+    /* Time to check if MAILCHECK is explicitly set to zero, or if enough
+       time has passed since the last check. */
+    return (seconds == 0 || ((now - last_time_mail_checked) >= seconds));
 }
 
 /* Okay, we have checked the mail.  Perhaps I should make this function
    go away. */
 void
-reset_mail_timer ()
-{
-  last_time_mail_checked = NOW;
+reset_mail_timer () {
+    last_time_mail_checked = NOW;
 }
 
 /* Locate a file in the list.  Return index of
    entry, or -1 if not found. */
 static int
 find_mail_file (file)
-     char *file;
+char *file;
 {
-  register int i;
+    register int i;
 
-  for (i = 0; i < mailfiles_count; i++)
-    if (STREQ (mailfiles[i]->name, file))
-      return i;
+    for (i = 0; i < mailfiles_count; i++)
+        if (STREQ (mailfiles[i]->name, file)) {
+            return i;
+        }
 
-  return -1;
+    return -1;
 }
 
 #define RESET_MAIL_FILE(i) \
@@ -145,112 +145,115 @@ find_mail_file (file)
 
 static void
 init_mail_file (i)
-     int i;
+int i;
 {
-  mailfiles[i]->access_time = mailfiles[i]->mod_time = last_time_mail_checked ? last_time_mail_checked : shell_start_time;
-  mailfiles[i]->file_size = 0;
-  mailfiles[i]->flags = 0;
+    mailfiles[i]->access_time = mailfiles[i]->mod_time = last_time_mail_checked ?
+                                last_time_mail_checked : shell_start_time;
+    mailfiles[i]->file_size = 0;
+    mailfiles[i]->flags = 0;
 }
 
 static void
 update_mail_file (i)
-     int i;
+int i;
 {
-  char *file;
-  struct stat finfo;
+    char *file;
+    struct stat finfo;
 
-  file = mailfiles[i]->name;
-  if (mailstat (file, &finfo) == 0)
-    UPDATE_MAIL_FILE (i, finfo);
-  else
-    RESET_MAIL_FILE (i);
+    file = mailfiles[i]->name;
+    if (mailstat (file, &finfo) == 0) {
+        UPDATE_MAIL_FILE (i, finfo);
+    } else {
+        RESET_MAIL_FILE (i);
+    }
 }
 
 /* Add this file to the list of remembered files and return its index
    in the list of mail files. */
 static int
 add_mail_file (file, msg)
-     char *file, *msg;
+char *file, *msg;
 {
-  struct stat finfo;
-  char *filename;
-  int i;
+    struct stat finfo;
+    char *filename;
+    int i;
 
-  filename = full_pathname (file);
-  i = find_mail_file (filename);
-  if (i >= 0)
-    {
-      if (mailstat (filename, &finfo) == 0)
-	UPDATE_MAIL_FILE (i, finfo);
+    filename = full_pathname (file);
+    i = find_mail_file (filename);
+    if (i >= 0) {
+        if (mailstat (filename, &finfo) == 0) {
+            UPDATE_MAIL_FILE (i, finfo);
+        }
 
-      free (filename);
-      return i;
+        free (filename);
+        return i;
     }
 
-  i = mailfiles_count++;
-  mailfiles = (FILEINFO **)xrealloc
-		(mailfiles, mailfiles_count * sizeof (FILEINFO *));
+    i = mailfiles_count++;
+    mailfiles = (FILEINFO **)xrealloc
+                (mailfiles, mailfiles_count * sizeof (FILEINFO *));
 
-  mailfiles[i] = alloc_mail_file (filename, msg);
-  init_mail_file (i);
+    mailfiles[i] = alloc_mail_file (filename, msg);
+    init_mail_file (i);
 
-  return i;
+    return i;
 }
 
 /* Reset the existing mail files access and modification times to zero. */
 void
-reset_mail_files ()
-{
-  register int i;
+reset_mail_files () {
+    register int i;
 
-  for (i = 0; i < mailfiles_count; i++)
-    RESET_MAIL_FILE (i);
+    for (i = 0; i < mailfiles_count; i++) {
+        RESET_MAIL_FILE (i);
+    }
 }
 
 static FILEINFO *
 alloc_mail_file (filename, msg)
-     char *filename, *msg;
+char *filename, *msg;
 {
-  FILEINFO *mf;
+    FILEINFO *mf;
 
-  mf = (FILEINFO *)xmalloc (sizeof (FILEINFO));
-  mf->name = filename;
-  mf->msg = msg ? savestring (msg) : (char *)NULL;
-  mf->flags = 0;
+    mf = (FILEINFO *)xmalloc (sizeof (FILEINFO));
+    mf->name = filename;
+    mf->msg = msg ? savestring (msg) : (char *)NULL;
+    mf->flags = 0;
 
-  return mf;
+    return mf;
 }
 
 static void
 dispose_mail_file (mf)
-     FILEINFO *mf;
+FILEINFO *mf;
 {
-  free (mf->name);
-  FREE (mf->msg);
-  free (mf);
+    free (mf->name);
+    FREE (mf->msg);
+    free (mf);
 }
 
 /* Free the information that we have about the remembered mail files. */
 void
-free_mail_files ()
-{
-  register int i;
+free_mail_files () {
+    register int i;
 
-  for (i = 0; i < mailfiles_count; i++)
-    dispose_mail_file (mailfiles[i]);
+    for (i = 0; i < mailfiles_count; i++) {
+        dispose_mail_file (mailfiles[i]);
+    }
 
-  if (mailfiles)
-    free (mailfiles);
+    if (mailfiles) {
+        free (mailfiles);
+    }
 
-  mailfiles_count = 0;
-  mailfiles = (FILEINFO **)NULL;
+    mailfiles_count = 0;
+    mailfiles = (FILEINFO **)NULL;
 }
 
 void
-init_mail_dates ()
-{
-  if (mailfiles == 0)
-    remember_mail_dates ();
+init_mail_dates () {
+    if (mailfiles == 0) {
+        remember_mail_dates ();
+    }
 }
 
 /* Return non-zero if FILE's mod date has changed and it has not been
@@ -258,61 +261,66 @@ init_mail_dates ()
    the cached mail file info. */
 static int
 file_mod_date_changed (i)
-     int i;
+int i;
 {
-  time_t mtime;
-  struct stat finfo;
-  char *file;
+    time_t mtime;
+    struct stat finfo;
+    char *file;
 
-  file = mailfiles[i]->name;
-  mtime = mailfiles[i]->mod_time;
+    file = mailfiles[i]->name;
+    mtime = mailfiles[i]->mod_time;
 
-  if (mailstat (file, &finfo) != 0)
+    if (mailstat (file, &finfo) != 0) {
+        return (0);
+    }
+
+    if (finfo.st_size > 0) {
+        return (mtime < finfo.st_mtime);
+    }
+
+    if (finfo.st_size == 0 && mailfiles[i]->file_size > 0) {
+        UPDATE_MAIL_FILE (i, finfo);
+    }
+
     return (0);
-
-  if (finfo.st_size > 0)
-    return (mtime < finfo.st_mtime);
-
-  if (finfo.st_size == 0 && mailfiles[i]->file_size > 0)
-    UPDATE_MAIL_FILE (i, finfo);
-
-  return (0);
 }
 
 /* Return non-zero if FILE's access date has changed. */
 static int
 file_access_date_changed (i)
-     int i;
+int i;
 {
-  time_t atime;
-  struct stat finfo;
-  char *file;
+    time_t atime;
+    struct stat finfo;
+    char *file;
 
-  file = mailfiles[i]->name;
-  atime = mailfiles[i]->access_time;
+    file = mailfiles[i]->name;
+    atime = mailfiles[i]->access_time;
 
-  if (mailstat (file, &finfo) != 0)
+    if (mailstat (file, &finfo) != 0) {
+        return (0);
+    }
+
+    if (finfo.st_size > 0) {
+        return (atime < finfo.st_atime);
+    }
+
     return (0);
-
-  if (finfo.st_size > 0)
-    return (atime < finfo.st_atime);
-
-  return (0);
 }
 
 /* Return non-zero if FILE's size has increased. */
 static int
 file_has_grown (i)
-     int i;
+int i;
 {
-  off_t size;
-  struct stat finfo;
-  char *file;
+    off_t size;
+    struct stat finfo;
+    char *file;
 
-  file = mailfiles[i]->name;
-  size = mailfiles[i]->file_size;
+    file = mailfiles[i]->name;
+    size = mailfiles[i]->file_size;
 
-  return ((mailstat (file, &finfo) == 0) && (finfo.st_size > size));
+    return ((mailstat (file, &finfo) == 0) && (finfo.st_size > size));
 }
 
 /* Take an element from $MAILPATH and return the portion from
@@ -320,43 +328,41 @@ file_has_grown (i)
    message to be printed when the file contents change. */
 static char *
 parse_mailpath_spec (str)
-     char *str;
+char *str;
 {
-  char *s;
-  int pass_next;
+    char *s;
+    int pass_next;
 
-  for (s = str, pass_next = 0; s && *s; s++)
-    {
-      if (pass_next)
-	{
-	  pass_next = 0;
-	  continue;
-	}
-      if (*s == '\\')
-	{
-	  pass_next++;
-	  continue;
-	}
-      if (*s == '?' || *s == '%')
-	return s;
+    for (s = str, pass_next = 0; s && *s; s++) {
+        if (pass_next) {
+            pass_next = 0;
+            continue;
+        }
+        if (*s == '\\') {
+            pass_next++;
+            continue;
+        }
+        if (*s == '?' || *s == '%') {
+            return s;
+        }
     }
-  return ((char *)NULL);
+    return ((char *)NULL);
 }
 
 char *
-make_default_mailpath ()
-{
+make_default_mailpath () {
 #if defined (DEFAULT_MAIL_DIRECTORY)
-  char *mp;
+    char *mp;
 
-  get_current_user_info ();
-  mp = (char *)xmalloc (2 + sizeof (DEFAULT_MAIL_DIRECTORY) + strlen (current_user.user_name));
-  strcpy (mp, DEFAULT_MAIL_DIRECTORY);
-  mp[sizeof(DEFAULT_MAIL_DIRECTORY) - 1] = '/';
-  strcpy (mp + sizeof (DEFAULT_MAIL_DIRECTORY), current_user.user_name);
-  return (mp);
+    get_current_user_info ();
+    mp = (char *)xmalloc (2 + sizeof (DEFAULT_MAIL_DIRECTORY) + strlen (
+                              current_user.user_name));
+    strcpy (mp, DEFAULT_MAIL_DIRECTORY);
+    mp[sizeof(DEFAULT_MAIL_DIRECTORY) - 1] = '/';
+    strcpy (mp + sizeof (DEFAULT_MAIL_DIRECTORY), current_user.user_name);
+    return (mp);
 #else
-  return ((char *)NULL);
+    return ((char *)NULL);
 #endif
 }
 
@@ -365,39 +371,35 @@ make_default_mailpath ()
    default value, which we randomly concoct from using Unix. */
 
 void
-remember_mail_dates ()
-{
-  char *mailpaths;
-  char *mailfile, *mp;
-  int i = 0;
+remember_mail_dates () {
+    char *mailpaths;
+    char *mailfile, *mp;
+    int i = 0;
 
-  mailpaths = get_string_value ("MAILPATH");
+    mailpaths = get_string_value ("MAILPATH");
 
-  /* If no $MAILPATH, but $MAIL, use that as a single filename to check. */
-  if (mailpaths == 0 && (mailpaths = get_string_value ("MAIL")))
-    {
-      add_mail_file (mailpaths, (char *)NULL);
-      return;
+    /* If no $MAILPATH, but $MAIL, use that as a single filename to check. */
+    if (mailpaths == 0 && (mailpaths = get_string_value ("MAIL"))) {
+        add_mail_file (mailpaths, (char *)NULL);
+        return;
     }
 
-  if (mailpaths == 0)
-    {
-      mailpaths = make_default_mailpath ();
-      if (mailpaths)
-	{
-	  add_mail_file (mailpaths, (char *)NULL);
-	  free (mailpaths);
-	}
-      return;
+    if (mailpaths == 0) {
+        mailpaths = make_default_mailpath ();
+        if (mailpaths) {
+            add_mail_file (mailpaths, (char *)NULL);
+            free (mailpaths);
+        }
+        return;
     }
 
-  while (mailfile = extract_colon_unit (mailpaths, &i))
-    {
-      mp = parse_mailpath_spec (mailfile);
-      if (mp && *mp)
-	*mp++ = '\0';
-      add_mail_file (mailfile, mp);
-      free (mailfile);
+    while (mailfile = extract_colon_unit (mailpaths, &i)) {
+        mp = parse_mailpath_spec (mailfile);
+        if (mp && *mp) {
+            *mp++ = '\0';
+        }
+        add_mail_file (mailfile, mp);
+        free (mailfile);
     }
 }
 
@@ -414,78 +416,76 @@ remember_mail_dates ()
    mail file has been accessed since the last time we remembered, then
    the message "The mail in <mailfile> has been read" is printed. */
 void
-check_mail ()
-{
-  char *current_mail_file, *message;
-  int i, use_user_notification;
-  char *dollar_underscore, *temp;
+check_mail () {
+    char *current_mail_file, *message;
+    int i, use_user_notification;
+    char *dollar_underscore, *temp;
 
-  dollar_underscore = get_string_value ("_");
-  if (dollar_underscore)
-    dollar_underscore = savestring (dollar_underscore);
+    dollar_underscore = get_string_value ("_");
+    if (dollar_underscore) {
+        dollar_underscore = savestring (dollar_underscore);
+    }
 
-  for (i = 0; i < mailfiles_count; i++)
-    {
-      current_mail_file = mailfiles[i]->name;
+    for (i = 0; i < mailfiles_count; i++) {
+        current_mail_file = mailfiles[i]->name;
 
-      if (*current_mail_file == '\0')
-	continue;
+        if (*current_mail_file == '\0') {
+            continue;
+        }
 
-      if (file_mod_date_changed (i))
-	{
-	  int file_is_bigger;
+        if (file_mod_date_changed (i)) {
+            int file_is_bigger;
 
-	  use_user_notification = mailfiles[i]->msg != (char *)NULL;
-	  message = mailfiles[i]->msg ? mailfiles[i]->msg : _("You have mail in $_");
+            use_user_notification = mailfiles[i]->msg != (char *)NULL;
+            message = mailfiles[i]->msg ? mailfiles[i]->msg : _("You have mail in $_");
 
-	  bind_variable ("_", current_mail_file, 0);
+            bind_variable ("_", current_mail_file, 0);
 
 #define atime mailfiles[i]->access_time
 #define mtime mailfiles[i]->mod_time
 
-	  /* Have to compute this before the call to update_mail_file, which
-	     resets all the information. */
-	  file_is_bigger = file_has_grown (i);
+            /* Have to compute this before the call to update_mail_file, which
+               resets all the information. */
+            file_is_bigger = file_has_grown (i);
 
-	  update_mail_file (i);
+            update_mail_file (i);
 
-	  /* If the user has just run a program which manipulates the
-	     mail file, then don't bother explaining that the mail
-	     file has been manipulated.  Since some systems don't change
-	     the access time to be equal to the modification time when
-	     the mail in the file is manipulated, check the size also.  If
-	     the file has not grown, continue. */
-	  if ((atime >= mtime) && !file_is_bigger)
-	    continue;
+            /* If the user has just run a program which manipulates the
+               mail file, then don't bother explaining that the mail
+               file has been manipulated.  Since some systems don't change
+               the access time to be equal to the modification time when
+               the mail in the file is manipulated, check the size also.  If
+               the file has not grown, continue. */
+            if ((atime >= mtime) && !file_is_bigger) {
+                continue;
+            }
 
-	  /* If the mod time is later than the access time and the file
-	     has grown, note the fact that this is *new* mail. */
-	  if (use_user_notification == 0 && (atime < mtime) && file_is_bigger)
-	    message = _("You have new mail in $_");
+            /* If the mod time is later than the access time and the file
+               has grown, note the fact that this is *new* mail. */
+            if (use_user_notification == 0 && (atime < mtime) && file_is_bigger) {
+                message = _("You have new mail in $_");
+            }
 #undef atime
 #undef mtime
 
-	  if (temp = expand_string_to_string (message, Q_DOUBLE_QUOTES))
-	    {
-	      puts (temp);
-	      free (temp);
-	    }
-	  else
-	    putchar ('\n');
-	}
+            if (temp = expand_string_to_string (message, Q_DOUBLE_QUOTES)) {
+                puts (temp);
+                free (temp);
+            } else {
+                putchar ('\n');
+            }
+        }
 
-      if (mail_warning && file_access_date_changed (i))
-	{
-	  update_mail_file (i);
-	  printf (_("The mail in %s has been read\n"), current_mail_file);
-	}
+        if (mail_warning && file_access_date_changed (i)) {
+            update_mail_file (i);
+            printf (_("The mail in %s has been read\n"), current_mail_file);
+        }
     }
 
-  if (dollar_underscore)
-    {
-      bind_variable ("_", dollar_underscore, 0);
-      free (dollar_underscore);
+    if (dollar_underscore) {
+        bind_variable ("_", dollar_underscore, 0);
+        free (dollar_underscore);
+    } else {
+        unbind_variable ("_");
     }
-  else
-    unbind_variable ("_");
 }

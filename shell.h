@@ -132,8 +132,8 @@ extern int locale_utf8locale;
 /* Structure to pass around that holds a bitmap of file descriptors
    to close, and the size of that structure.  Used in execute_cmd.c. */
 struct fd_bitmap {
-  int size;
-  char *bitmap;
+    int size;
+    char *bitmap;
 };
 
 #define FD_BITMAP_SIZE 32
@@ -143,11 +143,11 @@ struct fd_bitmap {
 
 /* Information about the current user. */
 struct user_info {
-  uid_t uid, euid;
-  gid_t gid, egid;
-  char *user_name;
-  char *shell;		/* shell from the password file */
-  char *home_dir;
+    uid_t uid, euid;
+    gid_t gid, egid;
+    char *user_name;
+    char *shell;		/* shell from the password file */
+    char *home_dir;
 };
 
 extern struct user_info current_user;
@@ -167,55 +167,55 @@ extern struct user_info current_user;
 
 typedef struct _sh_parser_state_t {
 
-  /* parsing state */
-  int parser_state;
-  int *token_state;
+    /* parsing state */
+    int parser_state;
+    int *token_state;
 
-  char *token;
-  int token_buffer_size;
+    char *token;
+    int token_buffer_size;
 
-  /* input line state -- line number saved elsewhere */
-  int input_line_terminator;
-  int eof_encountered;
+    /* input line state -- line number saved elsewhere */
+    int input_line_terminator;
+    int eof_encountered;
 
 #if defined (HANDLE_MULTIBYTE)
-  /* Nothing right now for multibyte state, but might want something later. */
+    /* Nothing right now for multibyte state, but might want something later. */
 #endif
 
-  char **prompt_string_pointer;
+    char **prompt_string_pointer;
 
-  /* history state affecting or modified by the parser */
-  int current_command_line_count;
+    /* history state affecting or modified by the parser */
+    int current_command_line_count;
 #if defined (HISTORY)
-  int remember_on_history;
-  int history_expansion_inhibited;
+    int remember_on_history;
+    int history_expansion_inhibited;
 #endif
 
-  /* execution state possibly modified by the parser */
-  int last_command_exit_value;
+    /* execution state possibly modified by the parser */
+    int last_command_exit_value;
 #if defined (ARRAY_VARS)
-  ARRAY *pipestatus;
+    ARRAY *pipestatus;
 #endif
-  sh_builtin_func_t *last_shell_builtin, *this_shell_builtin;
+    sh_builtin_func_t *last_shell_builtin, *this_shell_builtin;
 
-  /* flags state affecting the parser */
-  int expand_aliases;
-  int echo_input_at_read;
-  int need_here_doc;
-  int here_doc_first_line;
+    /* flags state affecting the parser */
+    int expand_aliases;
+    int echo_input_at_read;
+    int need_here_doc;
+    int here_doc_first_line;
 
-  /* structures affecting the parser */
-  REDIRECT *redir_stack[HEREDOC_MAX];
+    /* structures affecting the parser */
+    REDIRECT *redir_stack[HEREDOC_MAX];
 } sh_parser_state_t;
 
 typedef struct _sh_input_line_state_t {
-  char *input_line;
-  size_t input_line_index;
-  size_t input_line_size;
-  size_t input_line_len;
+    char *input_line;
+    size_t input_line_index;
+    size_t input_line_size;
+    size_t input_line_len;
 #if defined (HANDLE_MULTIBYTE)
-  char *input_property;
-  size_t input_propsize;
+    char *input_property;
+    size_t input_propsize;
 #endif
 } sh_input_line_state_t;
 

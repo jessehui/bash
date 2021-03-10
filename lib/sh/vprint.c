@@ -41,27 +41,26 @@
 
 int
 vfprintf (iop, fmt, ap)
-     FILE *iop;
-     char *fmt;
-     va_list ap;
+FILE *iop;
+char *fmt;
+va_list ap;
 {
-  int len;
-  char localbuf[BUFSIZ];
+    int len;
+    char localbuf[BUFSIZ];
 
-  if (iop->_flag & _IONBF)
-    {
-      iop->_flag &= ~_IONBF;
-      iop->_ptr = iop->_base = localbuf;
-      len = _doprnt (fmt, ap, iop);
-      (void) fflush (iop);
-      iop->_flag |= _IONBF;
-      iop->_base = NULL;
-      iop->_bufsiz = 0;
-      iop->_cnt = 0;
+    if (iop->_flag & _IONBF) {
+        iop->_flag &= ~_IONBF;
+        iop->_ptr = iop->_base = localbuf;
+        len = _doprnt (fmt, ap, iop);
+        (void) fflush (iop);
+        iop->_flag |= _IONBF;
+        iop->_base = NULL;
+        iop->_bufsiz = 0;
+        iop->_cnt = 0;
+    } else {
+        len = _doprnt (fmt, ap, iop);
     }
-  else
-    len = _doprnt (fmt, ap, iop);
-  return (ferror (iop) ? EOF : len);
+    return (ferror (iop) ? EOF : len);
 }
 
 /*
@@ -69,17 +68,17 @@ vfprintf (iop, fmt, ap)
  */
 int
 vsprintf (str, fmt, ap)
-     char *str, *fmt;
-     va_list ap;
+char *str, *fmt;
+va_list ap;
 {
-  FILE f;
-  int len;
+    FILE f;
+    int len;
 
-  f._flag = _IOWRT|_IOSTRG;
-  f._ptr = str;
-  f._cnt = 32767;
-  len = _doprnt (fmt, ap, &f);
-  *f._ptr = 0;
-  return (len);
+    f._flag = _IOWRT | _IOSTRG;
+    f._ptr = str;
+    f._cnt = 32767;
+    len = _doprnt (fmt, ap, &f);
+    *f._ptr = 0;
+    return (len);
 }
 #endif /* USE_VFPRINTF_EMULATION */

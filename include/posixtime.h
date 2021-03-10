@@ -47,10 +47,9 @@
 #endif /* !HAVE_SYSCONF && !_SC_CLK_TCK */
 
 #if !HAVE_TIMEVAL
-struct timeval
-{
-  time_t tv_sec;
-  long int tv_usec;
+struct timeval {
+    time_t tv_sec;
+    long int tv_usec;
 };
 #endif
 

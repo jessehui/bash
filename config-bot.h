@@ -160,7 +160,7 @@
       defined (HAVE_WINT_T) && \
       defined (HAVE_WCWIDTH) && \
       defined (HAVE_WCTYPE)
-     /* system is supposed to support XPG5 */
+/* system is supposed to support XPG5 */
 #    define HANDLE_MULTIBYTE      1
 #  endif
 #endif

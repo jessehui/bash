@@ -47,7 +47,8 @@ extern int array_expand_once;
 extern SHELL_VAR *convert_var_to_array PARAMS((SHELL_VAR *));
 extern SHELL_VAR *convert_var_to_assoc PARAMS((SHELL_VAR *));
 
-extern char *make_array_variable_value PARAMS((SHELL_VAR *, arrayind_t, char *, char *, int));
+extern char *make_array_variable_value PARAMS((SHELL_VAR *, arrayind_t, char *, char *,
+        int));
 
 extern SHELL_VAR *bind_array_variable PARAMS((char *, arrayind_t, char *, int));
 extern SHELL_VAR *bind_array_element PARAMS((SHELL_VAR *, arrayind_t, char *, int));

@@ -30,32 +30,41 @@ extern char *get_name_for_error PARAMS((void));
 extern void file_error PARAMS((const char *));
 
 /* Report a programmer's error, and abort.  Pass REASON, and ARG1 ... ARG5. */
-extern void programming_error PARAMS((const char *, ...))  __attribute__((__format__ (printf, 1, 2)));
+extern void programming_error PARAMS((const char *,
+                                      ...))  __attribute__((__format__ (printf, 1, 2)));
 
 /* General error reporting.  Pass FORMAT and ARG1 ... ARG5. */
-extern void report_error PARAMS((const char *, ...))  __attribute__((__format__ (printf, 1, 2)));
+extern void report_error PARAMS((const char *, ...))  __attribute__((__format__ (printf,
+        1, 2)));
 
 /* Error messages for parts of the parser that don't call report_syntax_error */
-extern void parser_error PARAMS((int, const char *, ...))  __attribute__((__format__ (printf, 2, 3)));
+extern void parser_error PARAMS((int, const char *,
+                                 ...))  __attribute__((__format__ (printf, 2, 3)));
 
 /* Report an unrecoverable error and exit.  Pass FORMAT and ARG1 ... ARG5. */
-extern void fatal_error PARAMS((const char *, ...))  __attribute__((__format__ (printf, 1, 2)));
+extern void fatal_error PARAMS((const char *, ...))  __attribute__((__format__ (printf, 1,
+        2)));
 
 /* Report a system error, like BSD warn(3). */
-extern void sys_error PARAMS((const char *, ...))  __attribute__((__format__ (printf, 1, 2)));
+extern void sys_error PARAMS((const char *, ...))  __attribute__((__format__ (printf, 1,
+        2)));
 
 /* Report an internal error. */
-extern void internal_error PARAMS((const char *, ...))  __attribute__((__format__ (printf, 1, 2)));
+extern void internal_error PARAMS((const char *, ...))  __attribute__((__format__ (printf,
+        1, 2)));
 
 /* Report an internal warning. */
-extern void internal_warning PARAMS((const char *, ...))  __attribute__((__format__ (printf, 1, 2)));
+extern void internal_warning PARAMS((const char *,
+                                     ...))  __attribute__((__format__ (printf, 1, 2)));
 
 /* Report an internal informational notice. */
-extern void internal_inform PARAMS((const char *, ...))  __attribute__((__format__ (printf, 1, 2)));
+extern void internal_inform PARAMS((const char *,
+                                    ...))  __attribute__((__format__ (printf, 1, 2)));
 
 /* Debugging functions, not enabled in released version. */
 extern char *strescape PARAMS((const char *));
-extern void itrace PARAMS((const char *, ...)) __attribute__ ((__format__ (printf, 1, 2)));
+extern void itrace PARAMS((const char *, ...)) __attribute__ ((__format__ (printf, 1,
+        2)));
 extern void trace PARAMS((const char *, ...)) __attribute__ ((__format__ (printf, 1, 2)));
 
 /* Report an error having to do with command parsing or execution. */

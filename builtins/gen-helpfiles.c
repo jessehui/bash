@@ -22,7 +22,7 @@
    the long_doc members of each struct builtin element and writes those to
    the file named by the `handle' member of the struct builtin element. */
 
-#if !defined (CROSS_COMPILING) 
+#if !defined (CROSS_COMPILING)
 #  include <config.h>
 #else	/* CROSS_COMPILING */
 /* A conservative set of defines based on POSIX/SUS3/XPG6 */
@@ -105,31 +105,29 @@ int write_helpfiles PARAMS((struct builtin *));
    creating the production file if necessary. */
 int
 main (argc, argv)
-     int argc;
-     char **argv;
+int argc;
+char **argv;
 {
-  int arg_index = 1;
+    int arg_index = 1;
 
-  while (arg_index < argc && argv[arg_index][0] == '-')
-    {
-      char *arg = argv[arg_index++];
+    while (arg_index < argc && argv[arg_index][0] == '-') {
+        char *arg = argv[arg_index++];
 
-      if (strcmp (arg, "-noproduction") == 0)
-	;
-      else if (strcmp (arg, "-H") == 0)
-	helpfile_directory = argv[arg_index++];
-      else if (strcmp (arg, "-S") == 0)
-	single_longdoc_strings = 0;
-      else
-	{
-	  fprintf (stderr, "%s: Unknown flag %s.\n", argv[0], arg);
-	  exit (2);
-	}
+        if (strcmp (arg, "-noproduction") == 0)
+            ;
+        else if (strcmp (arg, "-H") == 0) {
+            helpfile_directory = argv[arg_index++];
+        } else if (strcmp (arg, "-S") == 0) {
+            single_longdoc_strings = 0;
+        } else {
+            fprintf (stderr, "%s: Unknown flag %s.\n", argv[0], arg);
+            exit (2);
+        }
     }
 
-  write_helpfiles(shell_builtins);
+    write_helpfiles(shell_builtins);
 
-  exit (0);
+    exit (0);
 }
 
 /* Write DOCUMENTATION to STREAM, perhaps surrounding it with double-quotes
@@ -138,60 +136,58 @@ main (argc, argv)
    issues. */
 void
 write_documentation (stream, documentation, indentation)
-     FILE *stream;
-     char *documentation;
-     int indentation;
+FILE *stream;
+char *documentation;
+int indentation;
 {
-  if (stream == 0)
-    return;
+    if (stream == 0) {
+        return;
+    }
 
-  if (documentation)
-    fprintf (stream, "%*s%s\n", indentation, " ", documentation);
+    if (documentation) {
+        fprintf (stream, "%*s%s\n", indentation, " ", documentation);
+    }
 }
 
 int
 write_helpfiles (builtins)
-     struct builtin *builtins;
+struct builtin *builtins;
 {
-  char *helpfile, *bname, *fname;
-  FILE *helpfp;
-  int i, hdlen;
-  struct builtin b;
+    char *helpfile, *bname, *fname;
+    FILE *helpfp;
+    int i, hdlen;
+    struct builtin b;
 
-  i = mkdir ("helpfiles", 0777);
-  if (i < 0 && errno != EEXIST)
-    {
-      fprintf (stderr, "write_helpfiles: helpfiles: cannot create directory\n");
-      return -1;
+    i = mkdir ("helpfiles", 0777);
+    if (i < 0 && errno != EEXIST) {
+        fprintf (stderr, "write_helpfiles: helpfiles: cannot create directory\n");
+        return -1;
     }
 
-  hdlen = strlen ("helpfiles/");
-  for (i = 0; i < num_shell_builtins; i++)
-    {
-      b = builtins[i];
+    hdlen = strlen ("helpfiles/");
+    for (i = 0; i < num_shell_builtins; i++) {
+        b = builtins[i];
 
-      fname = (char *)b.handle;
-      helpfile = (char *)malloc (hdlen + strlen (fname) + 1);
-      if (helpfile == 0)
-	{
-	  fprintf (stderr, "gen-helpfiles: cannot allocate memory\n");
-	  exit (1);
-	}
-      sprintf (helpfile, "helpfiles/%s", fname);
+        fname = (char *)b.handle;
+        helpfile = (char *)malloc (hdlen + strlen (fname) + 1);
+        if (helpfile == 0) {
+            fprintf (stderr, "gen-helpfiles: cannot allocate memory\n");
+            exit (1);
+        }
+        sprintf (helpfile, "helpfiles/%s", fname);
 
-      helpfp = fopen (helpfile, "w");
-      if (helpfp == 0)
-	{
-	  fprintf (stderr, "write_helpfiles: cannot open %s\n", helpfile);
-	  free (helpfile);
-	  continue;
-	}
+        helpfp = fopen (helpfile, "w");
+        if (helpfp == 0) {
+            fprintf (stderr, "write_helpfiles: cannot open %s\n", helpfile);
+            free (helpfile);
+            continue;
+        }
 
-      write_documentation (helpfp, b.long_doc[0], 4);
+        write_documentation (helpfp, b.long_doc[0], 4);
 
-      fflush (helpfp);
-      fclose (helpfp);
-      free (helpfile);
+        fflush (helpfp);
+        fclose (helpfp);
+        free (helpfile);
     }
-  return 0;
+    return 0;
 }

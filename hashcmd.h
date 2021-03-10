@@ -26,8 +26,8 @@
 extern HASH_TABLE *hashed_filenames;
 
 typedef struct _pathdata {
-  char *path;		/* The full pathname of the file. */
-  int flags;
+    char *path;		/* The full pathname of the file. */
+    int flags;
 } PATH_DATA;
 
 #define HASH_RELPATH	0x01	/* this filename is a relative pathname. */

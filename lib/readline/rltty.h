@@ -3,7 +3,7 @@
 /* Copyright (C) 1995-2009 Free Software Foundation, Inc.
 
    This file is part of the GNU Readline Library (Readline), a library
-   for reading lines of text with interactive input and history editing.      
+   for reading lines of text with interactive input and history editing.
 
    Readline is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -59,22 +59,22 @@
 #endif /* !NEW_TTY_DRIVER && !_POSIX_VDISABLE */
 
 typedef struct _rl_tty_chars {
-  unsigned char t_eof;
-  unsigned char t_eol;
-  unsigned char t_eol2;
-  unsigned char t_erase;
-  unsigned char t_werase;
-  unsigned char t_kill;
-  unsigned char t_reprint;
-  unsigned char t_intr;
-  unsigned char t_quit;
-  unsigned char t_susp;
-  unsigned char t_dsusp;
-  unsigned char t_start;
-  unsigned char t_stop;
-  unsigned char t_lnext;
-  unsigned char t_flush;
-  unsigned char t_status;
+    unsigned char t_eof;
+    unsigned char t_eol;
+    unsigned char t_eol2;
+    unsigned char t_erase;
+    unsigned char t_werase;
+    unsigned char t_kill;
+    unsigned char t_reprint;
+    unsigned char t_intr;
+    unsigned char t_quit;
+    unsigned char t_susp;
+    unsigned char t_dsusp;
+    unsigned char t_start;
+    unsigned char t_stop;
+    unsigned char t_lnext;
+    unsigned char t_flush;
+    unsigned char t_status;
 } _RL_TTY_CHARS;
 
 #endif /* _RLTTY_H_ */

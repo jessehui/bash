@@ -44,18 +44,18 @@
 #endif /* !HAVE_SYSCONF && !_SC_CLK_TCK */
 
 long
-get_clk_tck ()
-{
-  static long retval = 0;
+get_clk_tck () {
+    static long retval = 0;
 
-  if (retval != 0)
-    return (retval);
+    if (retval != 0) {
+        return (retval);
+    }
 
 #if defined (HAVE_SYSCONF) && defined (_SC_CLK_TCK)
-  retval = sysconf (_SC_CLK_TCK);
+    retval = sysconf (_SC_CLK_TCK);
 #else /* !SYSCONF || !_SC_CLK_TCK */
-  retval = CLK_TCK;
+    retval = CLK_TCK;
 #endif /* !SYSCONF || !_SC_CLK_TCK */
 
-  return (retval);
+    return (retval);
 }

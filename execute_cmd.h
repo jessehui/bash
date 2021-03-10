@@ -24,25 +24,23 @@
 #include "stdc.h"
 
 #if defined (ARRAY_VARS)
-struct func_array_state
-  {
+struct func_array_state {
     ARRAY *funcname_a;
     SHELL_VAR *funcname_v;
     ARRAY *source_a;
     SHELL_VAR *source_v;
     ARRAY *lineno_a;
     SHELL_VAR *lineno_v;
-  };
+};
 #endif
 
 /* Placeholder for later expansion to include more execution state */
 /* XXX - watch out for pid_t */
-struct execstate
-  {
+struct execstate {
     pid_t pid;
     int subshell_env;
-  };
-	
+};
+
 
 /* Variables declared in execute_cmd.c, used by many other files */
 extern int return_catch_flag;
@@ -74,7 +72,8 @@ extern void dispose_fd_bitmap PARAMS((struct fd_bitmap *));
 extern void close_fd_bitmap PARAMS((struct fd_bitmap *));
 extern int executing_line_number PARAMS((void));
 extern int execute_command PARAMS((COMMAND *));
-extern int execute_command_internal PARAMS((COMMAND *, int, int, int, struct fd_bitmap *));
+extern int execute_command_internal PARAMS((COMMAND *, int, int, int,
+        struct fd_bitmap *));
 extern int shell_execve PARAMS((char *, char **, char **));
 extern void setup_async_signals PARAMS((void));
 extern void async_redirect_stdin PARAMS((void));

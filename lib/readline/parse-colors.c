@@ -57,10 +57,10 @@
 
 #if defined (COLOR_SUPPORT)
 
-static bool get_funky_string (char **dest, const char **src, bool equals_end, size_t *output_count);
+static bool get_funky_string (char **dest, const char **src, bool equals_end,
+                              size_t *output_count);
 
-struct bin_str _rl_color_indicator[] =
-  {
+struct bin_str _rl_color_indicator[] = {
     { LEN_STR_PAIR ("\033[") },         //  lc: Left of color sequence
     { LEN_STR_PAIR ("m") },             //  rc: Right of color sequence
     { 0, NULL },                        //  ec: End color (replaces lc+no+rc)
@@ -85,7 +85,7 @@ struct bin_str _rl_color_indicator[] =
     { LEN_STR_PAIR ("30;41") },         //  ca: black on red
     { 0, NULL },                        //  mh: disabled by default
     { LEN_STR_PAIR ("\033[K") },        //  cl: clear to end of line
-  };
+};
 
 /* Parse a string as part of the LS_COLORS variable; this may involve
    decoding all kinds of escape characters.  If equals_end is set an
@@ -102,339 +102,318 @@ struct bin_str _rl_color_indicator[] =
 
 static bool
 get_funky_string (char **dest, const char **src, bool equals_end, size_t *output_count) {
-  char num;			/* For numerical codes */
-  size_t count;			/* Something to count with */
-  enum {
-    ST_GND, ST_BACKSLASH, ST_OCTAL, ST_HEX, ST_CARET, ST_END, ST_ERROR
-  } state;
-  const char *p;
-  char *q;
+    char num;			/* For numerical codes */
+    size_t count;			/* Something to count with */
+    enum {
+        ST_GND, ST_BACKSLASH, ST_OCTAL, ST_HEX, ST_CARET, ST_END, ST_ERROR
+    } state;
+    const char *p;
+    char *q;
 
-  p = *src;			/* We don't want to double-indirect */
-  q = *dest;			/* the whole darn time.  */
+    p = *src;			/* We don't want to double-indirect */
+    q = *dest;			/* the whole darn time.  */
 
-  count = 0;			/* No characters counted in yet.  */
-  num = 0;
+    count = 0;			/* No characters counted in yet.  */
+    num = 0;
 
-  state = ST_GND;		/* Start in ground state.  */
-  while (state < ST_END)
-    {
-      switch (state)
-        {
-        case ST_GND:		/* Ground state (no escapes) */
-          switch (*p)
-            {
-            case ':':
-            case '\0':
-              state = ST_END;	/* End of string */
-              break;
-            case '\\':
-              state = ST_BACKSLASH; /* Backslash scape sequence */
-              ++p;
-              break;
-            case '^':
-              state = ST_CARET; /* Caret escape */
-              ++p;
-              break;
-            case '=':
-              if (equals_end)
-                {
-                  state = ST_END; /* End */
-                  break;
+    state = ST_GND;		/* Start in ground state.  */
+    while (state < ST_END) {
+        switch (state) {
+            case ST_GND:		/* Ground state (no escapes) */
+                switch (*p) {
+                    case ':':
+                    case '\0':
+                        state = ST_END;	/* End of string */
+                        break;
+                    case '\\':
+                        state = ST_BACKSLASH; /* Backslash scape sequence */
+                        ++p;
+                        break;
+                    case '^':
+                        state = ST_CARET; /* Caret escape */
+                        ++p;
+                        break;
+                    case '=':
+                        if (equals_end) {
+                            state = ST_END; /* End */
+                            break;
+                        }
+                    /* else fall through */
+                    default:
+                        *(q++) = *(p++);
+                        ++count;
+                        break;
                 }
-              /* else fall through */
+                break;
+
+            case ST_BACKSLASH:	/* Backslash escaped character */
+                switch (*p) {
+                    case '0':
+                    case '1':
+                    case '2':
+                    case '3':
+                    case '4':
+                    case '5':
+                    case '6':
+                    case '7':
+                        state = ST_OCTAL;	/* Octal sequence */
+                        num = *p - '0';
+                        break;
+                    case 'x':
+                    case 'X':
+                        state = ST_HEX;	/* Hex sequence */
+                        num = 0;
+                        break;
+                    case 'a':		/* Bell */
+                        num = '\a';
+                        break;
+                    case 'b':		/* Backspace */
+                        num = '\b';
+                        break;
+                    case 'e':		/* Escape */
+                        num = 27;
+                        break;
+                    case 'f':		/* Form feed */
+                        num = '\f';
+                        break;
+                    case 'n':		/* Newline */
+                        num = '\n';
+                        break;
+                    case 'r':		/* Carriage return */
+                        num = '\r';
+                        break;
+                    case 't':		/* Tab */
+                        num = '\t';
+                        break;
+                    case 'v':		/* Vtab */
+                        num = '\v';
+                        break;
+                    case '?':		/* Delete */
+                        num = 127;
+                        break;
+                    case '_':		/* Space */
+                        num = ' ';
+                        break;
+                    case '\0':		/* End of string */
+                        state = ST_ERROR;	/* Error! */
+                        break;
+                    default:		/* Escaped character like \ ^ : = */
+                        num = *p;
+                        break;
+                }
+                if (state == ST_BACKSLASH) {
+                    *(q++) = num;
+                    ++count;
+                    state = ST_GND;
+                }
+                ++p;
+                break;
+
+            case ST_OCTAL:		/* Octal sequence */
+                if (*p < '0' || *p > '7') {
+                    *(q++) = num;
+                    ++count;
+                    state = ST_GND;
+                } else {
+                    num = (num << 3) + (*(p++) - '0');
+                }
+                break;
+
+            case ST_HEX:		/* Hex sequence */
+                switch (*p) {
+                    case '0':
+                    case '1':
+                    case '2':
+                    case '3':
+                    case '4':
+                    case '5':
+                    case '6':
+                    case '7':
+                    case '8':
+                    case '9':
+                        num = (num << 4) + (*(p++) - '0');
+                        break;
+                    case 'a':
+                    case 'b':
+                    case 'c':
+                    case 'd':
+                    case 'e':
+                    case 'f':
+                        num = (num << 4) + (*(p++) - 'a') + 10;
+                        break;
+                    case 'A':
+                    case 'B':
+                    case 'C':
+                    case 'D':
+                    case 'E':
+                    case 'F':
+                        num = (num << 4) + (*(p++) - 'A') + 10;
+                        break;
+                    default:
+                        *(q++) = num;
+                        ++count;
+                        state = ST_GND;
+                        break;
+                }
+                break;
+
+            case ST_CARET:		/* Caret escape */
+                state = ST_GND;	/* Should be the next state... */
+                if (*p >= '@' && *p <= '~') {
+                    *(q++) = *(p++) & 037;
+                    ++count;
+                } else if (*p == '?') {
+                    *(q++) = 127;
+                    ++count;
+                } else {
+                    state = ST_ERROR;
+                }
+                break;
+
             default:
-              *(q++) = *(p++);
-              ++count;
-              break;
-            }
-          break;
-
-        case ST_BACKSLASH:	/* Backslash escaped character */
-          switch (*p)
-            {
-            case '0':
-            case '1':
-            case '2':
-            case '3':
-            case '4':
-            case '5':
-            case '6':
-            case '7':
-              state = ST_OCTAL;	/* Octal sequence */
-              num = *p - '0';
-              break;
-            case 'x':
-            case 'X':
-              state = ST_HEX;	/* Hex sequence */
-              num = 0;
-              break;
-            case 'a':		/* Bell */
-              num = '\a';
-              break;
-            case 'b':		/* Backspace */
-              num = '\b';
-              break;
-            case 'e':		/* Escape */
-              num = 27;
-              break;
-            case 'f':		/* Form feed */
-              num = '\f';
-              break;
-            case 'n':		/* Newline */
-              num = '\n';
-              break;
-            case 'r':		/* Carriage return */
-              num = '\r';
-              break;
-            case 't':		/* Tab */
-              num = '\t';
-              break;
-            case 'v':		/* Vtab */
-              num = '\v';
-              break;
-            case '?':		/* Delete */
-              num = 127;
-              break;
-            case '_':		/* Space */
-              num = ' ';
-              break;
-            case '\0':		/* End of string */
-              state = ST_ERROR;	/* Error! */
-              break;
-            default:		/* Escaped character like \ ^ : = */
-              num = *p;
-              break;
-            }
-          if (state == ST_BACKSLASH)
-            {
-              *(q++) = num;
-              ++count;
-              state = ST_GND;
-            }
-          ++p;
-          break;
-
-        case ST_OCTAL:		/* Octal sequence */
-          if (*p < '0' || *p > '7')
-            {
-              *(q++) = num;
-              ++count;
-              state = ST_GND;
-            }
-          else
-            num = (num << 3) + (*(p++) - '0');
-          break;
-
-        case ST_HEX:		/* Hex sequence */
-          switch (*p)
-            {
-            case '0':
-            case '1':
-            case '2':
-            case '3':
-            case '4':
-            case '5':
-            case '6':
-            case '7':
-            case '8':
-            case '9':
-              num = (num << 4) + (*(p++) - '0');
-              break;
-            case 'a':
-            case 'b':
-            case 'c':
-            case 'd':
-            case 'e':
-            case 'f':
-              num = (num << 4) + (*(p++) - 'a') + 10;
-              break;
-            case 'A':
-            case 'B':
-            case 'C':
-            case 'D':
-            case 'E':
-            case 'F':
-              num = (num << 4) + (*(p++) - 'A') + 10;
-              break;
-            default:
-              *(q++) = num;
-              ++count;
-              state = ST_GND;
-              break;
-            }
-          break;
-
-        case ST_CARET:		/* Caret escape */
-          state = ST_GND;	/* Should be the next state... */
-          if (*p >= '@' && *p <= '~')
-            {
-              *(q++) = *(p++) & 037;
-              ++count;
-            }
-          else if (*p == '?')
-            {
-              *(q++) = 127;
-              ++count;
-            }
-          else
-            state = ST_ERROR;
-          break;
-
-        default:
-	  /* should we ? */
-          /* abort ();	no, we should not */
-          state = ST_ERROR;
-          break;
+                /* should we ? */
+                /* abort ();	no, we should not */
+                state = ST_ERROR;
+                break;
         }
     }
 
-  *dest = q;
-  *src = p;
-  *output_count = count;
+    *dest = q;
+    *src = p;
+    *output_count = count;
 
-  return state != ST_ERROR;
+    return state != ST_ERROR;
 }
 #endif /* COLOR_SUPPORT */
 
-void _rl_parse_colors(void)
-{
+void _rl_parse_colors(void) {
 #if defined (COLOR_SUPPORT)
-  const char *p;		/* Pointer to character being parsed */
-  char *buf;			/* color_buf buffer pointer */
-  int state;			/* State of parser */
-  int ind_no;			/* Indicator number */
-  char label[3];		/* Indicator label */
-  COLOR_EXT_TYPE *ext;		/* Extension we are working on */
+    const char *p;		/* Pointer to character being parsed */
+    char *buf;			/* color_buf buffer pointer */
+    int state;			/* State of parser */
+    int ind_no;			/* Indicator number */
+    char label[3];		/* Indicator label */
+    COLOR_EXT_TYPE *ext;		/* Extension we are working on */
 
-  p = sh_get_env_value ("LS_COLORS");
-  if (p == 0 || *p == '\0')
-    {
-      _rl_color_ext_list = NULL;
-      return;
+    p = sh_get_env_value ("LS_COLORS");
+    if (p == 0 || *p == '\0') {
+        _rl_color_ext_list = NULL;
+        return;
     }
 
-  ext = NULL;
-  strcpy (label, "??");
+    ext = NULL;
+    strcpy (label, "??");
 
-  /* This is an overly conservative estimate, but any possible
-     LS_COLORS string will *not* generate a color_buf longer than
-     itself, so it is a safe way of allocating a buffer in
-     advance.  */
-  buf = color_buf = savestring (p);
+    /* This is an overly conservative estimate, but any possible
+       LS_COLORS string will *not* generate a color_buf longer than
+       itself, so it is a safe way of allocating a buffer in
+       advance.  */
+    buf = color_buf = savestring (p);
 
-  state = 1;
-  while (state > 0)
-    {
-      switch (state)
-        {
-        case 1:		/* First label character */
-          switch (*p)
-            {
-            case ':':
-              ++p;
-              break;
+    state = 1;
+    while (state > 0) {
+        switch (state) {
+            case 1:		/* First label character */
+                switch (*p) {
+                    case ':':
+                        ++p;
+                        break;
 
-            case '*':
-              /* Allocate new extension block and add to head of
-                 linked list (this way a later definition will
-                 override an earlier one, which can be useful for
-                 having terminal-specific defs override global).  */
+                    case '*':
+                        /* Allocate new extension block and add to head of
+                           linked list (this way a later definition will
+                           override an earlier one, which can be useful for
+                           having terminal-specific defs override global).  */
 
-              ext = (COLOR_EXT_TYPE *)xmalloc (sizeof *ext);
-              ext->next = _rl_color_ext_list;
-              _rl_color_ext_list = ext;
+                        ext = (COLOR_EXT_TYPE *)xmalloc (sizeof * ext);
+                        ext->next = _rl_color_ext_list;
+                        _rl_color_ext_list = ext;
 
-              ++p;
-              ext->ext.string = buf;
+                        ++p;
+                        ext->ext.string = buf;
 
-              state = (get_funky_string (&buf, &p, true, &ext->ext.len)
-                       ? 4 : -1);
-              break;
+                        state = (get_funky_string (&buf, &p, true, &ext->ext.len)
+                                 ? 4 : -1);
+                        break;
 
-            case '\0':
-              state = 0;	/* Done! */
-              break;
+                    case '\0':
+                        state = 0;	/* Done! */
+                        break;
 
-            default:	/* Assume it is file type label */
-              label[0] = *(p++);
-              state = 2;
-              break;
-            }
-          break;
+                    default:	/* Assume it is file type label */
+                        label[0] = *(p++);
+                        state = 2;
+                        break;
+                }
+                break;
 
-        case 2:		/* Second label character */
-          if (*p)
-            {
-              label[1] = *(p++);
-              state = 3;
-            }
-          else
-            state = -1;	/* Error */
-          break;
+            case 2:		/* Second label character */
+                if (*p) {
+                    label[1] = *(p++);
+                    state = 3;
+                } else {
+                    state = -1;    /* Error */
+                }
+                break;
 
-        case 3:		/* Equal sign after indicator label */
-          state = -1;	/* Assume failure...  */
-          if (*(p++) == '=')/* It *should* be...  */
-            {
-              for (ind_no = 0; indicator_name[ind_no] != NULL; ++ind_no)
-                {
-                  if (STREQ (label, indicator_name[ind_no]))
-                    {
-                      _rl_color_indicator[ind_no].string = buf;
-                      state = (get_funky_string (&buf, &p, false,
-                                                 &_rl_color_indicator[ind_no].len)
-                               ? 1 : -1);
-                      break;
+            case 3:		/* Equal sign after indicator label */
+                state = -1;	/* Assume failure...  */
+                if (*(p++) == '=') { /* It *should* be...  */
+                    for (ind_no = 0; indicator_name[ind_no] != NULL; ++ind_no) {
+                        if (STREQ (label, indicator_name[ind_no])) {
+                            _rl_color_indicator[ind_no].string = buf;
+                            state = (get_funky_string (&buf, &p, false,
+                                                       &_rl_color_indicator[ind_no].len)
+                                     ? 1 : -1);
+                            break;
+                        }
+                    }
+                    if (state == -1) {
+                        _rl_errmsg ("LS_COLORS: unrecognized prefix: %s", label);
+                        /* recover from an unrecognized prefix */
+                        while (p && *p && *p != ':') {
+                            p++;
+                        }
+                        if (p && *p == ':') {
+                            state = 1;
+                        } else if (p && *p == 0) {
+                            state = 0;
+                        }
                     }
                 }
-              if (state == -1)
-		{
-                  _rl_errmsg ("LS_COLORS: unrecognized prefix: %s", label);
-                  /* recover from an unrecognized prefix */
-                  while (p && *p && *p != ':')
-		    p++;
-		  if (p && *p == ':')
-		    state = 1;
-		  else if (p && *p == 0)
-		    state = 0;
-		}
-            }
-          break;
+                break;
 
-        case 4:		/* Equal sign after *.ext */
-          if (*(p++) == '=')
-            {
-              ext->seq.string = buf;
-              state = (get_funky_string (&buf, &p, false, &ext->seq.len)
-                       ? 1 : -1);
-            }
-          else
-            state = -1;
-          /* XXX - recover here as with an unrecognized prefix? */
-          if (state == -1 && ext->ext.string)
-	    _rl_errmsg ("LS_COLORS: syntax error: %s", ext->ext.string);
-          break;
+            case 4:		/* Equal sign after *.ext */
+                if (*(p++) == '=') {
+                    ext->seq.string = buf;
+                    state = (get_funky_string (&buf, &p, false, &ext->seq.len)
+                             ? 1 : -1);
+                } else {
+                    state = -1;
+                }
+                /* XXX - recover here as with an unrecognized prefix? */
+                if (state == -1 && ext->ext.string) {
+                    _rl_errmsg ("LS_COLORS: syntax error: %s", ext->ext.string);
+                }
+                break;
         }
     }
 
-  if (state < 0)
-    {
-      COLOR_EXT_TYPE *e;
-      COLOR_EXT_TYPE *e2;
+    if (state < 0) {
+        COLOR_EXT_TYPE *e;
+        COLOR_EXT_TYPE *e2;
 
-      _rl_errmsg ("unparsable value for LS_COLORS environment variable");
-      free (color_buf);
-      for (e = _rl_color_ext_list; e != NULL; /* empty */)
-        {
-          e2 = e;
-          e = e->next;
-          free (e2);
+        _rl_errmsg ("unparsable value for LS_COLORS environment variable");
+        free (color_buf);
+        for (e = _rl_color_ext_list; e != NULL; /* empty */) {
+            e2 = e;
+            e = e->next;
+            free (e2);
         }
-      _rl_color_ext_list = NULL;
-      _rl_colored_stats = 0;	/* can't have colored stats without colors */
+        _rl_color_ext_list = NULL;
+        _rl_colored_stats = 0;	/* can't have colored stats without colors */
     }
 #else /* !COLOR_SUPPORT */
-  ;
+    ;
 #endif /* !COLOR_SUPPORT */
 }

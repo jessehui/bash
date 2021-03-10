@@ -80,8 +80,10 @@ do { \
 #define MAX_ATTRIBUTES		16
 
 /* Functions from common.c */
-extern void builtin_error PARAMS((const char *, ...))  __attribute__((__format__ (printf, 1, 2)));
-extern void builtin_warning PARAMS((const char *, ...))  __attribute__((__format__ (printf, 1, 2)));
+extern void builtin_error PARAMS((const char *, ...))  __attribute__((__format__ (printf,
+        1, 2)));
+extern void builtin_warning PARAMS((const char *,
+                                    ...))  __attribute__((__format__ (printf, 1, 2)));
 extern void builtin_usage PARAMS((void));
 extern void no_args PARAMS((WORD_LIST *));
 extern int no_options PARAMS((WORD_LIST *));

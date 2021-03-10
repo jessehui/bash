@@ -32,12 +32,12 @@
 
 /* A variable context. */
 typedef struct var_context {
-  char *name;		/* empty or NULL means global context */
-  int scope;		/* 0 means global context */
-  int flags;
-  struct var_context *up;	/* previous function calls */
-  struct var_context *down;	/* down towards global context */
-  HASH_TABLE *table;		/* variables at this scope */
+    char *name;		/* empty or NULL means global context */
+    int scope;		/* 0 means global context */
+    int flags;
+    struct var_context *up;	/* previous function calls */
+    struct var_context *down;	/* down towards global context */
+    HASH_TABLE *table;		/* variables at this scope */
 } VAR_CONTEXT;
 
 /* Flags for var_context->flags */
@@ -62,41 +62,42 @@ typedef struct var_context {
 /* What a shell variable looks like. */
 
 typedef struct variable *sh_var_value_func_t PARAMS((struct variable *));
-typedef struct variable *sh_var_assign_func_t PARAMS((struct variable *, char *, arrayind_t, char *));
+typedef struct variable *sh_var_assign_func_t PARAMS((struct variable *, char *,
+        arrayind_t, char *));
 
 /* For the future */
 union _value {
-  char *s;			/* string value */
-  intmax_t i;			/* int value */
-  COMMAND *f;			/* function */
-  ARRAY *a;			/* array */
-  HASH_TABLE *h;		/* associative array */
-  double d;			/* floating point number */
+    char *s;			/* string value */
+    intmax_t i;			/* int value */
+    COMMAND *f;			/* function */
+    ARRAY *a;			/* array */
+    HASH_TABLE *h;		/* associative array */
+    double d;			/* floating point number */
 #if defined (HAVE_LONG_DOUBLE)
-  long double ld;		/* long double */
+    long double ld;		/* long double */
 #endif
-  struct variable *v;		/* possible indirect variable use */
-  void *opaque;			/* opaque data for future use */
+    struct variable *v;		/* possible indirect variable use */
+    void *opaque;			/* opaque data for future use */
 };
 
 typedef struct variable {
-  char *name;			/* Symbol that the user types. */
-  char *value;			/* Value that is returned. */
-  char *exportstr;		/* String for the environment. */
-  sh_var_value_func_t *dynamic_value;	/* Function called to return a `dynamic'
+    char *name;			/* Symbol that the user types. */
+    char *value;			/* Value that is returned. */
+    char *exportstr;		/* String for the environment. */
+    sh_var_value_func_t *dynamic_value;	/* Function called to return a `dynamic'
 				   value for a variable, like $SECONDS
 				   or $RANDOM. */
-  sh_var_assign_func_t *assign_func; /* Function called when this `special
+    sh_var_assign_func_t *assign_func; /* Function called when this `special
 				   variable' is assigned a value in
 				   bind_variable. */
-  int attributes;		/* export, readonly, array, invisible... */
-  int context;			/* Which context this variable belongs to. */
+    int attributes;		/* export, readonly, array, invisible... */
+    int context;			/* Which context this variable belongs to. */
 } SHELL_VAR;
 
 typedef struct _vlist {
-  SHELL_VAR **list;
-  int list_size;	/* allocated size */
-  int list_len;		/* current number of entries */
+    SHELL_VAR **list;
+    int list_size;	/* allocated size */
+    int list_len;		/* current number of entries */
 } VARLIST;
 
 /* The various attributes that a given variable can have. */
@@ -229,7 +230,7 @@ typedef struct _vlist {
 /* Special value for nameref with invalid value for creation or assignment */
 extern SHELL_VAR nameref_invalid_value;
 #define INVALID_NAMEREF_VALUE	(void *)&nameref_invalid_value
-	
+
 /* Stuff for hacking variables. */
 typedef int sh_var_map_func_t PARAMS((SHELL_VAR *));
 
@@ -297,7 +298,7 @@ extern void bind_function_def PARAMS((const char *, FUNCTION_DEF *, int));
 
 extern SHELL_VAR **map_over PARAMS((sh_var_map_func_t *, VAR_CONTEXT *));
 SHELL_VAR **map_over_funcs PARAMS((sh_var_map_func_t *));
-     
+
 extern SHELL_VAR **all_shell_variables PARAMS((void));
 extern SHELL_VAR **all_shell_functions PARAMS((void));
 extern SHELL_VAR **all_visible_variables PARAMS((void));

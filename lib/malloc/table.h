@@ -46,13 +46,13 @@
  *
  */
 typedef struct mr_table {
-	PTR_T mem;
-	size_t size;
-	char flags;
-	const char *func;
-	const char *file;
-	int line;
-	int nalloc, nfree;
+    PTR_T mem;
+    size_t size;
+    char flags;
+    const char *func;
+    const char *file;
+    int line;
+    int nalloc, nfree;
 } mr_table_t;
 
 #define REG_TABLE_SIZE	8192
@@ -65,9 +65,9 @@ extern void mregister_dump_table PARAMS((void));
 extern void mregister_table_init PARAMS((void));
 
 typedef struct ma_table {
-	const char *file;
-	int line;
-	int nalloc;
+    const char *file;
+    int line;
+    int nalloc;
 } ma_table_t;
 
 extern void mlocation_register_alloc PARAMS((const char *, int));

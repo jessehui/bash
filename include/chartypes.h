@@ -88,7 +88,7 @@
   (((c) >= 'a' && (c) <= 'f') \
 	? (c)-'a'+10 \
 	: (c) >= 'A' && (c) <= 'F' ? (c)-'A'+10 : (c)-'0')
-                  
+
 #ifndef ISOCTAL
 #  define ISOCTAL(c)	((c) >= '0' && (c) <= '7')
 #endif
@@ -101,12 +101,12 @@
 #define TOUPPER(c)	(ISLOWER(c) ? toupper(c) : (c))
 
 #ifndef TOCTRL
-   /* letter to control char -- ASCII.  The TOUPPER is in there so \ce and
-      \cE will map to the same character in $'...' expansions. */
+/* letter to control char -- ASCII.  The TOUPPER is in there so \ce and
+   \cE will map to the same character in $'...' expansions. */
 #  define TOCTRL(x)	((x) == '?' ? 0x7f : (TOUPPER(x) & 0x1f))
 #endif
 #ifndef UNCTRL
-   /* control char to letter -- ASCII */
+/* control char to letter -- ASCII */
 #  define UNCTRL(x)	(TOUPPER(x) ^ 0x40)
 #endif
 

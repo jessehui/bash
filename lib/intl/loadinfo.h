@@ -55,10 +55,10 @@
 
 /* Separator in PATH like lists of pathnames.  */
 #if defined _WIN32 || defined __WIN32__ || defined __EMX__ || defined __DJGPP__
-  /* Win32, OS/2, DOS */
+/* Win32, OS/2, DOS */
 # define PATH_SEPARATOR ';'
 #else
-  /* Unix */
+/* Unix */
 # define PATH_SEPARATOR ':'
 #endif
 
@@ -76,15 +76,14 @@
 #define XPG_SPECIFIC	(XPG_CODESET|XPG_NORM_CODESET|XPG_MODIFIER)
 
 
-struct loaded_l10nfile
-{
-  const char *filename;
-  int decided;
+struct loaded_l10nfile {
+    const char *filename;
+    int decided;
 
-  const void *data;
+    const void *data;
 
-  struct loaded_l10nfile *next;
-  struct loaded_l10nfile *successor[1];
+    struct loaded_l10nfile *next;
+    struct loaded_l10nfile *successor[1];
 };
 
 
@@ -93,7 +92,7 @@ struct loaded_l10nfile
    names.  The return value is dynamically allocated and has to be
    freed by the caller.  */
 extern const char *_nl_normalize_codeset PARAMS ((const char *codeset,
-						  size_t name_len));
+        size_t name_len));
 
 /* Lookup a locale dependent file.
    *L10NFILE_LIST denotes a pool of lookup results of locale dependent
@@ -111,13 +110,13 @@ extern const char *_nl_normalize_codeset PARAMS ((const char *codeset,
    results from which this lookup result inherits.  */
 extern struct loaded_l10nfile *
 _nl_make_l10nflist PARAMS ((struct loaded_l10nfile **l10nfile_list,
-			    const char *dirlist, size_t dirlist_len, int mask,
-			    const char *language, const char *territory,
-			    const char *codeset,
-			    const char *normalized_codeset,
-			    const char *modifier, const char *special,
-			    const char *sponsor, const char *revision,
-			    const char *filename, int do_allocate));
+                            const char *dirlist, size_t dirlist_len, int mask,
+                            const char *language, const char *territory,
+                            const char *codeset,
+                            const char *normalized_codeset,
+                            const char *modifier, const char *special,
+                            const char *sponsor, const char *revision,
+                            const char *filename, int do_allocate));
 
 /* Lookup the real locale name for a locale alias NAME, or NULL if
    NAME is not a locale alias (but possibly a real locale name).
@@ -143,13 +142,13 @@ extern const char *_nl_expand_alias PARAMS ((const char *name));
      CEN_REVISION                for *REVISION.
  */
 extern int _nl_explode_name PARAMS ((char *name, const char **language,
-				     const char **modifier,
-				     const char **territory,
-				     const char **codeset,
-				     const char **normalized_codeset,
-				     const char **special,
-				     const char **sponsor,
-				     const char **revision));
+                                     const char **modifier,
+                                     const char **territory,
+                                     const char **codeset,
+                                     const char **normalized_codeset,
+                                     const char **special,
+                                     const char **sponsor,
+                                     const char **revision));
 
 /* Split a locale name NAME into a leading language part and all the
    rest.  Return a pointer to the first character after the language,

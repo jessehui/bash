@@ -17,7 +17,7 @@
    You should have received a copy of the GNU General Public License
    along with Bash.  If not, see <http://www.gnu.org/licenses/>.
 */
-   
+
 #include <config.h>
 
 #if !defined (HAVE_STRERROR)
@@ -50,25 +50,25 @@ static char *errbase = "Unknown system error ";
 
 char *
 strerror (e)
-     int e;
+int e;
 {
-  static char emsg[40];
+    static char emsg[40];
 #if defined (HAVE_SYS_ERRLIST)
-  extern int sys_nerr;
-  extern char *sys_errlist[];
+    extern int sys_nerr;
+    extern char *sys_errlist[];
 
-  if (e > 0 && e < sys_nerr)
-    return (sys_errlist[e]);
-  else
+    if (e > 0 && e < sys_nerr) {
+        return (sys_errlist[e]);
+    } else
 #endif /* HAVE_SYS_ERRLIST */
     {
-      char *z;
+        char *z;
 
-      z = itos (e);
-      strcpy (emsg, errbase);
-      strcat (emsg, z);
-      free (z);
-      return (&emsg[0]);
+        z = itos (e);
+        strcpy (emsg, errbase);
+        strcat (emsg, z);
+        free (z);
+        return (&emsg[0]);
     }
 }
 #endif /* HAVE_STRERROR */

@@ -53,14 +53,13 @@ enum stream_type {st_none, st_stdin, st_stream, st_string, st_bstream};
 
 /* A buffered stream.  Like a FILE *, but with our own buffering and
    synchronization.  Look in input.c for the implementation. */
-typedef struct BSTREAM
-{
-  int	 b_fd;
-  char	*b_buffer;		/* The buffer that holds characters read. */
-  size_t b_size;		/* How big the buffer is. */
-  size_t b_used;		/* How much of the buffer we're using, */
-  int	 b_flag;		/* Flag values. */
-  size_t b_inputp;		/* The input pointer, index into b_buffer. */
+typedef struct BSTREAM {
+    int	 b_fd;
+    char	*b_buffer;		/* The buffer that holds characters read. */
+    size_t b_size;		/* How big the buffer is. */
+    size_t b_used;		/* How much of the buffer we're using, */
+    int	 b_flag;		/* Flag values. */
+    size_t b_inputp;		/* The input pointer, index into b_buffer. */
 } BUFFERED_STREAM;
 
 #if 0
@@ -73,19 +72,19 @@ extern int bash_input_fd_changed;
 #endif /* BUFFERED_INPUT */
 
 typedef union {
-  FILE *file;
-  char *string;
+    FILE *file;
+    char *string;
 #if defined (BUFFERED_INPUT)
-  int buffered_fd;
+    int buffered_fd;
 #endif
 } INPUT_STREAM;
 
 typedef struct {
-  enum stream_type type;
-  char *name;
-  INPUT_STREAM location;
-  sh_cget_func_t *getter;
-  sh_cunget_func_t *ungetter;
+    enum stream_type type;
+    char *name;
+    INPUT_STREAM location;
+    sh_cget_func_t *getter;
+    sh_cunget_func_t *ungetter;
 } BASH_INPUT;
 
 extern BASH_INPUT bash_input;
@@ -93,7 +92,8 @@ extern BASH_INPUT bash_input;
 /* Functions from parse.y whose use directly or indirectly depends on the
    definitions in this file. */
 extern void initialize_bash_input PARAMS((void));
-extern void init_yy_io PARAMS((sh_cget_func_t *, sh_cunget_func_t *, enum stream_type, const char *, INPUT_STREAM));
+extern void init_yy_io PARAMS((sh_cget_func_t *, sh_cunget_func_t *, enum stream_type,
+                               const char *, INPUT_STREAM));
 extern char *yy_input_name PARAMS((void));
 extern void with_input_from_stdin PARAMS((void));
 extern void with_input_from_string PARAMS((char *, const char *));

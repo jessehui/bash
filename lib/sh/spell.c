@@ -60,43 +60,45 @@ static int spdist PARAMS((char *, char *));
  */
 int
 spname(oldname, newname)
-     char *oldname;
-     char *newname;
+char *oldname;
+char *newname;
 {
-  char *op, *np, *p;
-  char guess[PATH_MAX + 1], best[PATH_MAX + 1];
+    char *op, *np, *p;
+    char guess[PATH_MAX + 1], best[PATH_MAX + 1];
 
-  op = oldname;
-  np = newname;
-  for (;;)
-    {
-      while (*op == '/')    /* Skip slashes */
-	*np++ = *op++;
-      *np = '\0';
+    op = oldname;
+    np = newname;
+    for (;;) {
+        while (*op == '/') {  /* Skip slashes */
+            *np++ = *op++;
+        }
+        *np = '\0';
 
-      if (*op == '\0')    /* Exact or corrected */
-	{
-	  /* `.' is rarely the right thing. */
-	  if (oldname[1] == '\0' && newname[1] == '\0' &&
-		oldname[0] != '.' && newname[0] == '.')
-	    return -1;
-	  return strcmp(oldname, newname) != 0;
-	}
+        if (*op == '\0') {  /* Exact or corrected */
+            /* `.' is rarely the right thing. */
+            if (oldname[1] == '\0' && newname[1] == '\0' &&
+                    oldname[0] != '.' && newname[0] == '.') {
+                return -1;
+            }
+            return strcmp(oldname, newname) != 0;
+        }
 
-      /* Copy next component into guess */
-      for (p = guess; *op != '/' && *op != '\0'; op++)
-	if (p < guess + PATH_MAX)
-	  *p++ = *op;
-      *p = '\0';
+        /* Copy next component into guess */
+        for (p = guess; *op != '/' && *op != '\0'; op++)
+            if (p < guess + PATH_MAX) {
+                *p++ = *op;
+            }
+        *p = '\0';
 
-      if (mindist(newname, guess, best) >= 3)
-	return -1;  /* Hopeless */
+        if (mindist(newname, guess, best) >= 3) {
+            return -1;    /* Hopeless */
+        }
 
-      /*
-       *  Add to end of newname
-       */
-      for (p = best; *np = *p++; np++)
-	;
+        /*
+         *  Add to end of newname
+         */
+        for (p = best; *np = *p++; np++)
+            ;
     }
 }
 
@@ -105,44 +107,46 @@ spname(oldname, newname)
  */
 static int
 mindist(dir, guess, best)
-     char *dir;
-     char *guess;
-     char *best;
+char *dir;
+char *guess;
+char *best;
 {
-  DIR *fd;
-  struct dirent *dp;
-  int dist, x;
+    DIR *fd;
+    struct dirent *dp;
+    int dist, x;
 
-  dist = 3;    /* Worst distance */
-  if (*dir == '\0')
-    dir = ".";
-
-  if ((fd = opendir(dir)) == NULL)
-    return dist;
-
-  while ((dp = readdir(fd)) != NULL)
-    {
-      /*
-       *  Look for a better guess.  If the new guess is as
-       *  good as the current one, we take it.  This way,
-       *  any single character match will be a better match
-       *  than ".".
-       */
-      x = spdist(dp->d_name, guess);
-      if (x <= dist && x != 3)
-	{
-	  strcpy(best, dp->d_name);
-	  dist = x;
-	  if (dist == 0)    /* Exact match */
-	    break;
-	}
+    dist = 3;    /* Worst distance */
+    if (*dir == '\0') {
+        dir = ".";
     }
-  (void)closedir(fd);
 
-  /* Don't return `.' */
-  if (best[0] == '.' && best[1] == '\0')
-    dist = 3;
-  return dist;
+    if ((fd = opendir(dir)) == NULL) {
+        return dist;
+    }
+
+    while ((dp = readdir(fd)) != NULL) {
+        /*
+         *  Look for a better guess.  If the new guess is as
+         *  good as the current one, we take it.  This way,
+         *  any single character match will be a better match
+         *  than ".".
+         */
+        x = spdist(dp->d_name, guess);
+        if (x <= dist && x != 3) {
+            strcpy(best, dp->d_name);
+            dist = x;
+            if (dist == 0) {  /* Exact match */
+                break;
+            }
+        }
+    }
+    (void)closedir(fd);
+
+    /* Don't return `.' */
+    if (best[0] == '.' && best[1] == '\0') {
+        dist = 3;
+    }
+    return dist;
 }
 
 /*
@@ -156,57 +160,60 @@ mindist(dir, guess, best)
  */
 static int
 spdist(cur, new)
-     char *cur, *new;
+char *cur, *new;
 {
-  while (*cur == *new)
-    {
-      if (*cur == '\0')
-	return 0;    /* Exact match */
-      cur++;
-      new++;
+    while (*cur == *new) {
+        if (*cur == '\0') {
+            return 0;    /* Exact match */
+        }
+        cur++;
+        new++;
     }
 
-  if (*cur)
-    {
-      if (*new)
-	{
-	  if (cur[1] && new[1] && cur[0] == new[1] && cur[1] == new[0] && strcmp (cur + 2, new + 2) == 0)
-	    return 1;  /* Transposition */
+    if (*cur) {
+        if (*new) {
+            if (cur[1] && new[1] && cur[0] == new[1] && cur[1] == new[0] &&
+            strcmp (cur + 2, new + 2) == 0) {
+                return 1;    /* Transposition */
+            }
 
-	  if (strcmp (cur + 1, new + 1) == 0)
-	    return 2;  /* One character mismatch */
-	}
+            if (strcmp (cur + 1, new + 1) == 0) {
+                return 2;    /* One character mismatch */
+            }
+        }
 
-      if (strcmp(&cur[1], &new[0]) == 0)
-	return 2;    /* Extra character */
+        if (strcmp(&cur[1], &new[0]) == 0) {
+            return 2;    /* Extra character */
+        }
     }
 
-  if (*new && strcmp(cur, new + 1) == 0)
-    return 2;      /* Missing character */
+    if (*new && strcmp(cur, new + 1) == 0) {
+        return 2;    /* Missing character */
+    }
 
-  return 3;
+    return 3;
 }
 
 char *
 dirspell (dirname)
-     char *dirname;
+char *dirname;
 {
-  int n;
-  char *guess;
+    int n;
+    char *guess;
 
-  n = (strlen (dirname) * 3 + 1) / 2 + 1;
-  guess = (char *)malloc (n);
-  if (guess == 0)
-    return 0;
+    n = (strlen (dirname) * 3 + 1) / 2 + 1;
+    guess = (char *)malloc (n);
+    if (guess == 0) {
+        return 0;
+    }
 
-  switch (spname (dirname, guess))
-    {
-    case -1:
-    default:
-      free (guess);
-      return (char *)NULL;
-    case 0:
-    case 1:
-      return guess;
+    switch (spname (dirname, guess)) {
+        case -1:
+        default:
+            free (guess);
+            return (char *)NULL;
+        case 0:
+        case 1:
+            return guess;
     }
 }

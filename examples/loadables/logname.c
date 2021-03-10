@@ -37,38 +37,38 @@ extern int errno;
 
 int
 logname_builtin (list)
-     WORD_LIST *list;
+WORD_LIST *list;
 {
-  char *np;
+    char *np;
 
-  if (no_options (list))
-    return (EX_USAGE);
-
-  np = getlogin ();
-  if (np == 0)
-    {
-      builtin_error ("cannot find username: %s", strerror (errno));
-      return (EXECUTION_FAILURE);
+    if (no_options (list)) {
+        return (EX_USAGE);
     }
-  printf ("%s\n", np);
-  return (EXECUTION_SUCCESS);
+
+    np = getlogin ();
+    if (np == 0) {
+        builtin_error ("cannot find username: %s", strerror (errno));
+        return (EXECUTION_FAILURE);
+    }
+    printf ("%s\n", np);
+    return (EXECUTION_SUCCESS);
 }
 
 char *logname_doc[] = {
-	"Display user login name.",
-	"",
-	"Write the current user's login name to the standard output",
-	"and exit.  logname ignores the LOGNAME and USER variables.",
-	"logname ignores any non-option arguments.",
-	(char *)NULL
+    "Display user login name.",
+    "",
+    "Write the current user's login name to the standard output",
+    "and exit.  logname ignores the LOGNAME and USER variables.",
+    "logname ignores any non-option arguments.",
+    (char *)NULL
 };
-	
+
 struct builtin logname_struct = {
-	"logname",
-	logname_builtin,
-	BUILTIN_ENABLED,
-	logname_doc,
-	"logname",
-	0
+    "logname",
+    logname_builtin,
+    BUILTIN_ENABLED,
+    logname_doc,
+    "logname",
+    0
 };
-	
+

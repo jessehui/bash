@@ -53,11 +53,10 @@ typedef int _rl_bool_t;
 /* Null is a valid character in a color indicator (think about Epson
    printers, for example) so we have to use a length/buffer string
    type. */
-struct bin_str
-  {
+struct bin_str {
     size_t len;
     const char *string;
-  };
+};
 
 /* file type indicators (dir, sock, fifo, ...)
    Default value is initialized in parse-colors.c.
@@ -65,12 +64,11 @@ struct bin_str
 extern struct bin_str _rl_color_indicator[];
 
 /* The LS_COLORS variable is in a termcap-like format. */
-typedef struct _color_ext_type
-  {
+typedef struct _color_ext_type {
     struct bin_str ext;         	/* The extension we're looking for */
     struct bin_str seq;         	/* The sequence to output when we do */
     struct _color_ext_type *next;	/* Next in list */
-  } COLOR_EXT_TYPE;
+} COLOR_EXT_TYPE;
 
 /* file extensions indicators (.txt, .log, .jpg, ...)
    Values are taken from $LS_COLORS in rl_parse_colors(). */
@@ -86,22 +84,20 @@ extern COLOR_EXT_TYPE *_rl_color_ext_list;
    need to restore the default color later.  If not, we will need to
    call prep_non_filename_text before using color for the first time. */
 
-enum indicator_no
-  {
+enum indicator_no {
     C_LEFT, C_RIGHT, C_END, C_RESET, C_NORM, C_FILE, C_DIR, C_LINK,
     C_FIFO, C_SOCK,
     C_BLK, C_CHR, C_MISSING, C_ORPHAN, C_EXEC, C_DOOR, C_SETUID, C_SETGID,
     C_STICKY, C_OTHER_WRITABLE, C_STICKY_OTHER_WRITABLE, C_CAP, C_MULTIHARDLINK,
     C_CLR_TO_EOL
-  };
+};
 
 
 #if !S_IXUGO
 # define S_IXUGO (S_IXUSR | S_IXGRP | S_IXOTH)
 #endif
 
-enum filetype
-  {
+enum filetype {
     unknown,
     fifo,
     chardev,
@@ -112,7 +108,7 @@ enum filetype
     sock,
     whiteout,
     arg_directory
-  };
+};
 
 /* Prefix color, currently same as socket */
 #define C_PREFIX	C_SOCK

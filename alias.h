@@ -26,9 +26,9 @@
 #include "hashlib.h"
 
 typedef struct alias {
-  char *name;
-  char *value;
-  char flags;
+    char *name;
+    char *value;
+    char flags;
 } alias_t;
 
 /* Values for `flags' member of struct alias. */

@@ -41,16 +41,17 @@ compare(const void *p1, const void *p2) {
     const sort_element e2 = *(sort_element *) p2;
 
     if (numeric_flag) {
-        if (reverse_flag)
+        if (reverse_flag) {
             return (e2.num > e1.num) ? 1 : (e2.num < e1.num) ? -1 : 0;
-        else
+        } else {
             return (e1.num > e2.num) ? 1 : (e1.num < e2.num) ? -1 : 0;
-    }
-    else {
-        if (reverse_flag)
+        }
+    } else {
+        if (reverse_flag) {
             return strcoll(e2.value, e1.value);
-        else
+        } else {
             return strcoll(e1.value, e2.value);
+        }
     }
 }
 
@@ -77,16 +78,16 @@ sort_index(SHELL_VAR *dest, SHELL_VAR *source) {
             while ( bucket ) {
                 sa[i].v = NULL;
                 sa[i].key = bucket->key;
-                if ( numeric_flag )
+                if ( numeric_flag ) {
                     sa[i].num = strtod(bucket->data, NULL);
-                else
+                } else {
                     sa[i].value = bucket->data;
+                }
                 i++;
                 bucket = bucket->next;
             }
         }
-    }
-    else {
+    } else {
         array = array_cell(source);
         n = array_num_elements(array);
         sa = xmalloc(n * sizeof(sort_element));
@@ -94,10 +95,11 @@ sort_index(SHELL_VAR *dest, SHELL_VAR *source) {
 
         for (ae = element_forw(array->head); ae != array->head; ae = element_forw(ae)) {
             sa[i].v = ae;
-            if (numeric_flag)
+            if (numeric_flag) {
                 sa[i].num = strtod(element_value(ae), NULL);
-            else
+            } else {
                 sa[i].value = element_value(ae);
+            }
             i++;
         }
     }
@@ -113,10 +115,11 @@ sort_index(SHELL_VAR *dest, SHELL_VAR *source) {
     array_flush(dest_array);
 
     for ( i = 0; i < n; ++i ) {
-        if ( assoc_p(source) )
+        if ( assoc_p(source) ) {
             key = sa[i].key;
-        else
+        } else {
             key = fmtulong((long unsigned)sa[i].v->ind, 10, ibuf, sizeof(ibuf), 0);
+        }
 
         array_insert(dest_array, i, key);
     }
@@ -134,18 +137,20 @@ sort_inplace(SHELL_VAR *var) {
     a = array_cell(var);
     n = array_num_elements(a);
 
-    if ( n == 0 )
+    if ( n == 0 ) {
         return EXECUTION_SUCCESS;
+    }
 
     sa = xmalloc(n * sizeof(sort_element));
 
     i = 0;
     for (ae = element_forw(a->head); ae != a->head; ae = element_forw(ae)) {
         sa[i].v = ae;
-        if (numeric_flag)
+        if (numeric_flag) {
             sa[i].num = strtod(element_value(ae), NULL);
-        else
+        } else {
             sa[i].value = element_value(ae);
+        }
         i++;
     }
 
@@ -158,16 +163,18 @@ sort_inplace(SHELL_VAR *var) {
     qsort(sa, n, sizeof(sort_element), compare);
 
     // for in-place sort, simply "rewire" the array elements
-    sa[0].v->prev = sa[n-1].v->next = a->head;
+    sa[0].v->prev = sa[n - 1].v->next = a->head;
     a->head->next = sa[0].v;
-    a->head->prev = sa[n-1].v;
+    a->head->prev = sa[n - 1].v;
     a->max_index = n - 1;
     for (i = 0; i < n; i++) {
         sa[i].v->ind = i;
-        if (i > 0)
-            sa[i].v->prev = sa[i-1].v;
-        if (i < n - 1)
-            sa[i].v->next = sa[i+1].v;
+        if (i > 0) {
+            sa[i].v->prev = sa[i - 1].v;
+        }
+        if (i < n - 1) {
+            sa[i].v->next = sa[i + 1].v;
+        }
     }
     xfree(sa);
     return EXECUTION_SUCCESS;
@@ -186,10 +193,16 @@ asort_builtin(WORD_LIST *list) {
     reset_internal_getopt();
     while ((opt = internal_getopt(list, "inr")) != -1) {
         switch (opt) {
-            case 'i': index_flag = 1; break;
-            case 'n': numeric_flag = 1; break;
-            case 'r': reverse_flag = 1; break;
-            CASE_HELPOPT;
+            case 'i':
+                index_flag = 1;
+                break;
+            case 'n':
+                numeric_flag = 1;
+                break;
+            case 'r':
+                reverse_flag = 1;
+                break;
+                CASE_HELPOPT;
             default:
                 builtin_usage();
                 return (EX_USAGE);
@@ -217,8 +230,9 @@ asort_builtin(WORD_LIST *list) {
             return EXECUTION_FAILURE;
         }
         var = find_or_make_array_variable(list->word->word, 1);
-        if (var == 0)
+        if (var == 0) {
             return EXECUTION_FAILURE;
+        }
         var2 = find_variable(list->next->word->word);
         if ( !var2 || ( !array_p(var2) && !assoc_p(var2) ) ) {
             builtin_error("%s: Not an array", list->next->word->word);
@@ -237,13 +251,15 @@ asort_builtin(WORD_LIST *list) {
             continue;
         }
         if (readonly_p(var) || noassign_p(var)) {
-            if (readonly_p(var))
+            if (readonly_p(var)) {
                 err_readonly(word);
+            }
             continue;
         }
 
-        if ( (ret = sort_inplace(var)) != EXECUTION_SUCCESS )
+        if ( (ret = sort_inplace(var)) != EXECUTION_SUCCESS ) {
             return ret;
+        }
     }
     return EXECUTION_SUCCESS;
 

@@ -1,4 +1,4 @@
-/*   
+/*
  * netopen.c -- functions to make tcp/udp connections
  *
  * Chet Ramey
@@ -31,7 +31,7 @@
 #  include <unistd.h>
 #endif
 
-#include <stdio.h> 
+#include <stdio.h>
 #include <sys/types.h>
 
 #if defined (HAVE_SYS_SOCKET_H)
@@ -82,70 +82,71 @@ static int _netopen PARAMS((char *, char *, int));
 
 static int
 _getaddr (host, ap)
-     char *host;
-     struct in_addr *ap;
+char *host;
+struct in_addr *ap;
 {
-  struct hostent *h;
-  int r;
+    struct hostent *h;
+    int r;
 
-  r = 0;
-  if (host[0] >= '0' && host[0] <= '9')
-    {
-      /* If the first character is a digit, guess that it's an
-	 Internet address and return immediately if inet_aton succeeds. */
-      r = inet_aton (host, ap);
-      if (r)
-	return r;
+    r = 0;
+    if (host[0] >= '0' && host[0] <= '9') {
+        /* If the first character is a digit, guess that it's an
+        Internet address and return immediately if inet_aton succeeds. */
+        r = inet_aton (host, ap);
+        if (r) {
+            return r;
+        }
     }
 #if !defined (HAVE_GETHOSTBYNAME)
-  return 0;
+    return 0;
 #else
-  h = gethostbyname (host);
-  if (h && h->h_addr)
-    {
-      bcopy(h->h_addr, (char *)ap, h->h_length);
-      return 1;
+    h = gethostbyname (host);
+    if (h && h->h_addr) {
+        bcopy(h->h_addr, (char *)ap, h->h_length);
+        return 1;
     }
 #endif
-  return 0;
-  
+    return 0;
+
 }
 
 /* Return 1 if SERV is a valid port number and stuff the converted value into
-   PP in network byte order. */   
+   PP in network byte order. */
 static int
 _getserv (serv, proto, pp)
-     char *serv;
-     int proto;
-     unsigned short *pp;
+char *serv;
+int proto;
+unsigned short *pp;
 {
-  intmax_t l;
-  unsigned short s;
+    intmax_t l;
+    unsigned short s;
 
-  if (legal_number (serv, &l))
-    {
-      s = (unsigned short)(l & 0xFFFF);
-      if (s != l)
-	return (0);
-      s = htons (s);
-      if (pp)
-	*pp = s;
-      return 1;
-    }
-  else
+    if (legal_number (serv, &l)) {
+        s = (unsigned short)(l & 0xFFFF);
+        if (s != l) {
+            return (0);
+        }
+        s = htons (s);
+        if (pp) {
+            *pp = s;
+        }
+        return 1;
+    } else
 #if defined (HAVE_GETSERVBYNAME)
     {
-      struct servent *se;
+        struct servent *se;
 
-      se = getservbyname (serv, (proto == 't') ? "tcp" : "udp");
-      if (se == 0)
-	return 0;
-      if (pp)
-	*pp = se->s_port;	/* ports returned in network byte order */
-      return 1;
+        se = getservbyname (serv, (proto == 't') ? "tcp" : "udp");
+        if (se == 0) {
+            return 0;
+        }
+        if (pp) {
+            *pp = se->s_port;    /* ports returned in network byte order */
+        }
+        return 1;
     }
 #else /* !HAVE_GETSERVBYNAME */
-    return 0;
+        return 0;
 #endif /* !HAVE_GETSERVBYNAME */
 }
 
@@ -153,52 +154,48 @@ _getserv (serv, proto, pp)
  * Open a TCP or UDP connection to HOST on port SERV.  Uses the
  * traditional BSD mechanisms.  Returns the connected socket or -1 on error.
  */
-static int 
+static int
 _netopen4(host, serv, typ)
-     char *host, *serv;
-     int typ;
+char *host, *serv;
+int typ;
 {
-  struct in_addr ina;
-  struct sockaddr_in sin;
-  unsigned short p;
-  int s, e;
+    struct in_addr ina;
+    struct sockaddr_in sin;
+    unsigned short p;
+    int s, e;
 
-  if (_getaddr(host, &ina) == 0)
-    {
-      internal_error (_("%s: host unknown"), host);
-      errno = EINVAL;
-      return -1;
+    if (_getaddr(host, &ina) == 0) {
+        internal_error (_("%s: host unknown"), host);
+        errno = EINVAL;
+        return -1;
     }
 
-  if (_getserv(serv, typ, &p) == 0)
-    {
-      internal_error(_("%s: invalid service"), serv);
-      errno = EINVAL;
-      return -1;
-    }
-	
-  memset ((char *)&sin, 0, sizeof(sin));
-  sin.sin_family = AF_INET;
-  sin.sin_port = p;
-  sin.sin_addr = ina;
-
-  s = socket(AF_INET, (typ == 't') ? SOCK_STREAM : SOCK_DGRAM, 0);
-  if (s < 0)
-    {
-      sys_error ("socket");
-      return (-1);
+    if (_getserv(serv, typ, &p) == 0) {
+        internal_error(_("%s: invalid service"), serv);
+        errno = EINVAL;
+        return -1;
     }
 
-  if (connect (s, (struct sockaddr *)&sin, sizeof (sin)) < 0)
-    {
-      e = errno;
-      sys_error("connect");
-      close(s);
-      errno = e;
-      return (-1);
+    memset ((char *)&sin, 0, sizeof(sin));
+    sin.sin_family = AF_INET;
+    sin.sin_port = p;
+    sin.sin_addr = ina;
+
+    s = socket(AF_INET, (typ == 't') ? SOCK_STREAM : SOCK_DGRAM, 0);
+    if (s < 0) {
+        sys_error ("socket");
+        return (-1);
     }
 
-  return(s);
+    if (connect (s, (struct sockaddr *)&sin, sizeof (sin)) < 0) {
+        e = errno;
+        sys_error("connect");
+        close(s);
+        errno = e;
+        return (-1);
+    }
+
+    return (s);
 }
 #endif /* ! HAVE_GETADDRINFO */
 
@@ -210,61 +207,58 @@ _netopen4(host, serv, typ)
  */
 static int
 _netopen6 (host, serv, typ)
-     char *host, *serv;
-     int typ;
+char *host, *serv;
+int typ;
 {
-  int s, e;
-  struct addrinfo hints, *res, *res0;
-  int gerr;
+    int s, e;
+    struct addrinfo hints, *res, *res0;
+    int gerr;
 
-  memset ((char *)&hints, 0, sizeof (hints));
-  /* XXX -- if problems with IPv6, set to PF_INET for IPv4 only */
+    memset ((char *)&hints, 0, sizeof (hints));
+    /* XXX -- if problems with IPv6, set to PF_INET for IPv4 only */
 #ifdef DEBUG	/* PF_INET is the one that works for me */
-  hints.ai_family = PF_INET;
+    hints.ai_family = PF_INET;
 #else
-  hints.ai_family = PF_UNSPEC;
+    hints.ai_family = PF_UNSPEC;
 #endif
-  hints.ai_socktype = (typ == 't') ? SOCK_STREAM : SOCK_DGRAM;
+    hints.ai_socktype = (typ == 't') ? SOCK_STREAM : SOCK_DGRAM;
 
-  gerr = getaddrinfo (host, serv, &hints, &res0);
-  if (gerr)
-    {
-      if (gerr == EAI_SERVICE)
-	internal_error ("%s: %s", serv, gai_strerror (gerr));
-      else
-	internal_error ("%s: %s", host, gai_strerror (gerr));
-      errno = EINVAL;
-      return -1;
+    gerr = getaddrinfo (host, serv, &hints, &res0);
+    if (gerr) {
+        if (gerr == EAI_SERVICE) {
+            internal_error ("%s: %s", serv, gai_strerror (gerr));
+        } else {
+            internal_error ("%s: %s", host, gai_strerror (gerr));
+        }
+        errno = EINVAL;
+        return -1;
     }
 
-  for (res = res0; res; res = res->ai_next)
-    {
-      if ((s = socket (res->ai_family, res->ai_socktype, res->ai_protocol)) < 0)
-	{
-	  if (res->ai_next)
-	    continue;
-	  sys_error ("socket");
-	  freeaddrinfo (res0);
-	  return -1;
-	}
-      if (connect (s, res->ai_addr, res->ai_addrlen) < 0)
-	{
-	  if (res->ai_next)
-	    {
-	      close (s);
-	      continue;
-	    }
-	  e = errno;
-	  sys_error ("connect");
-	  close (s);
-	  freeaddrinfo (res0);
-	  errno = e;
-	  return -1;
-	}
-      freeaddrinfo (res0);
-      break;
+    for (res = res0; res; res = res->ai_next) {
+        if ((s = socket (res->ai_family, res->ai_socktype, res->ai_protocol)) < 0) {
+            if (res->ai_next) {
+                continue;
+            }
+            sys_error ("socket");
+            freeaddrinfo (res0);
+            return -1;
+        }
+        if (connect (s, res->ai_addr, res->ai_addrlen) < 0) {
+            if (res->ai_next) {
+                close (s);
+                continue;
+            }
+            e = errno;
+            sys_error ("connect");
+            close (s);
+            freeaddrinfo (res0);
+            errno = e;
+            return -1;
+        }
+        freeaddrinfo (res0);
+        break;
     }
-  return s;
+    return s;
 }
 #endif /* HAVE_GETADDRINFO */
 
@@ -273,15 +267,15 @@ _netopen6 (host, serv, typ)
  * if available, falling back to the traditional BSD mechanisms otherwise.
  * Returns the connected socket or -1 on error.
  */
-static int 
+static int
 _netopen(host, serv, typ)
-     char *host, *serv;
-     int typ;
+char *host, *serv;
+int typ;
 {
 #ifdef HAVE_GETADDRINFO
-  return (_netopen6 (host, serv, typ));
+    return (_netopen6 (host, serv, typ));
 #else
-  return (_netopen4 (host, serv, typ));
+    return (_netopen4 (host, serv, typ));
 #endif
 }
 
@@ -291,27 +285,26 @@ _netopen(host, serv, typ)
  */
 int
 netopen (path)
-     char *path;
+char *path;
 {
-  char *np, *s, *t;
-  int fd;
+    char *np, *s, *t;
+    int fd;
 
-  np = (char *)xmalloc (strlen (path) + 1);
-  strcpy (np, path);
+    np = (char *)xmalloc (strlen (path) + 1);
+    strcpy (np, path);
 
-  s = np + 9;
-  t = strchr (s, '/');
-  if (t == 0)
-    {
-      internal_error (_("%s: bad network path specification"), path);
-      free (np);
-      return -1;
+    s = np + 9;
+    t = strchr (s, '/');
+    if (t == 0) {
+        internal_error (_("%s: bad network path specification"), path);
+        free (np);
+        return -1;
     }
-  *t++ = '\0';
-  fd = _netopen (s, t, path[5]);
-  free (np);
+    *t++ = '\0';
+    fd = _netopen (s, t, path[5]);
+    free (np);
 
-  return fd;
+    return fd;
 }
 
 #if 0
@@ -321,9 +314,9 @@ netopen (path)
  */
 int
 tcpopen (host, serv)
-     char *host, *serv;
+char *host, *serv;
 {
-  return (_netopen (host, serv, 't'));
+    return (_netopen (host, serv, 't'));
 }
 
 /*
@@ -332,9 +325,9 @@ tcpopen (host, serv)
  */
 int
 udpopen (host, serv)
-     char *host, *serv;
+char *host, *serv;
 {
-  return _netopen (host, serv, 'u');
+    return _netopen (host, serv, 'u');
 }
 #endif
 
@@ -342,10 +335,10 @@ udpopen (host, serv)
 
 int
 netopen (path)
-     char *path;
+char *path;
 {
-  internal_error (_("network operations not supported"));
-  return -1;
+    internal_error (_("network operations not supported"));
+    return -1;
 }
 
 #endif /* !HAVE_NETWORK */

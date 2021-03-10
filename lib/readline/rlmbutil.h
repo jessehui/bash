@@ -3,7 +3,7 @@
 /* Copyright (C) 2001-2015 Free Software Foundation, Inc.
 
    This file is part of the GNU Readline Library (Readline), a library
-   for reading lines of text with interactive input and history editing.      
+   for reading lines of text with interactive input and history editing.
 
    Readline is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -30,7 +30,7 @@
 
 /* For platforms which support the ISO C amendment 1 functionality we
    support user defined character classes.  */
-   /* Solaris 2.5 has a bug: <wchar.h> must be included before <wctype.h>.  */
+/* Solaris 2.5 has a bug: <wchar.h> must be included before <wctype.h>.  */
 #if defined (HAVE_WCTYPE_H) && defined (HAVE_WCHAR_H) && defined (HAVE_LOCALE_H)
 #  include <wchar.h>
 #  include <wctype.h>
@@ -44,7 +44,7 @@
       defined (HAVE_TOWUPPER) && \
       defined (HAVE_WCHAR_T) && \
       defined (HAVE_WCWIDTH)
-     /* system is supposed to support XPG5 */
+/* system is supposed to support XPG5 */
 #    define HANDLE_MULTIBYTE      1
 #  endif
 #endif
@@ -127,33 +127,104 @@ extern int _rl_walphabetic PARAMS((wchar_t));
    calls to a libc wcwidth() */
 static inline int
 _rl_wcwidth (wc)
-     wchar_t wc;
+wchar_t wc;
 {
-  switch (wc)
-    {
-    case ' ': case '!': case '"': case '#': case '%':
-    case '&': case '\'': case '(': case ')': case '*':
-    case '+': case ',': case '-': case '.': case '/':
-    case '0': case '1': case '2': case '3': case '4':
-    case '5': case '6': case '7': case '8': case '9':
-    case ':': case ';': case '<': case '=': case '>':
-    case '?':
-    case 'A': case 'B': case 'C': case 'D': case 'E':
-    case 'F': case 'G': case 'H': case 'I': case 'J':
-    case 'K': case 'L': case 'M': case 'N': case 'O':
-    case 'P': case 'Q': case 'R': case 'S': case 'T':
-    case 'U': case 'V': case 'W': case 'X': case 'Y':
-    case 'Z':
-    case '[': case '\\': case ']': case '^': case '_':
-    case 'a': case 'b': case 'c': case 'd': case 'e':
-    case 'f': case 'g': case 'h': case 'i': case 'j':
-    case 'k': case 'l': case 'm': case 'n': case 'o':
-    case 'p': case 'q': case 'r': case 's': case 't':
-    case 'u': case 'v': case 'w': case 'x': case 'y':
-    case 'z': case '{': case '|': case '}': case '~':
-      return 1;
-    default:
-      return wcwidth (wc);
+    switch (wc) {
+        case ' ':
+        case '!':
+        case '"':
+        case '#':
+        case '%':
+        case '&':
+        case '\'':
+        case '(':
+        case ')':
+        case '*':
+        case '+':
+        case ',':
+        case '-':
+        case '.':
+        case '/':
+        case '0':
+        case '1':
+        case '2':
+        case '3':
+        case '4':
+        case '5':
+        case '6':
+        case '7':
+        case '8':
+        case '9':
+        case ':':
+        case ';':
+        case '<':
+        case '=':
+        case '>':
+        case '?':
+        case 'A':
+        case 'B':
+        case 'C':
+        case 'D':
+        case 'E':
+        case 'F':
+        case 'G':
+        case 'H':
+        case 'I':
+        case 'J':
+        case 'K':
+        case 'L':
+        case 'M':
+        case 'N':
+        case 'O':
+        case 'P':
+        case 'Q':
+        case 'R':
+        case 'S':
+        case 'T':
+        case 'U':
+        case 'V':
+        case 'W':
+        case 'X':
+        case 'Y':
+        case 'Z':
+        case '[':
+        case '\\':
+        case ']':
+        case '^':
+        case '_':
+        case 'a':
+        case 'b':
+        case 'c':
+        case 'd':
+        case 'e':
+        case 'f':
+        case 'g':
+        case 'h':
+        case 'i':
+        case 'j':
+        case 'k':
+        case 'l':
+        case 'm':
+        case 'n':
+        case 'o':
+        case 'p':
+        case 'q':
+        case 'r':
+        case 's':
+        case 't':
+        case 'u':
+        case 'v':
+        case 'w':
+        case 'x':
+        case 'y':
+        case 'z':
+        case '{':
+        case '|':
+        case '}':
+        case '~':
+            return 1;
+        default:
+            return wcwidth (wc);
     }
 }
 

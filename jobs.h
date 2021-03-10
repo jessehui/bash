@@ -63,16 +63,16 @@
 /* Each child of the shell is remembered in a STRUCT PROCESS.  A circular
    chain of such structures is a pipeline. */
 typedef struct process {
-  struct process *next;	/* Next process in the pipeline.  A circular chain. */
-  pid_t pid;		/* Process ID. */
-  WAIT status;		/* The status of this command as returned by wait. */
-  int running;		/* Non-zero if this process is running. */
-  char *command;	/* The particular program that is running. */
+    struct process *next;	/* Next process in the pipeline.  A circular chain. */
+    pid_t pid;		/* Process ID. */
+    WAIT status;		/* The status of this command as returned by wait. */
+    int running;		/* Non-zero if this process is running. */
+    char *command;	/* The particular program that is running. */
 } PROCESS;
 
 struct pipeline_saver {
-  struct process *pipeline;
-  struct pipeline_saver *next;
+    struct process *pipeline;
+    struct pipeline_saver *next;
 };
 
 /* PALIVE really means `not exited' */
@@ -118,76 +118,76 @@ typedef enum { JNONE = -1, JRUNNING = 1, JSTOPPED = 2, JDEAD = 4, JMIXED = 8 } J
 #define IS_WAITING(j)		((jobs[j]->flags & J_WAITING) != 0)
 
 typedef struct job {
-  char *wd;	   /* The working directory at time of invocation. */
-  PROCESS *pipe;   /* The pipeline of processes that make up this job. */
-  pid_t pgrp;	   /* The process ID of the process group (necessary). */
-  JOB_STATE state; /* The state that this job is in. */
-  int flags;	   /* Flags word: J_NOTIFIED, J_FOREGROUND, or J_JOBCONTROL. */
+    char *wd;	   /* The working directory at time of invocation. */
+    PROCESS *pipe;   /* The pipeline of processes that make up this job. */
+    pid_t pgrp;	   /* The process ID of the process group (necessary). */
+    JOB_STATE state; /* The state that this job is in. */
+    int flags;	   /* Flags word: J_NOTIFIED, J_FOREGROUND, or J_JOBCONTROL. */
 #if defined (JOB_CONTROL)
-  COMMAND *deferred;	/* Commands that will execute when this job is done. */
-  sh_vptrfunc_t *j_cleanup; /* Cleanup function to call when job marked JDEAD */
-  PTR_T cleanarg;	/* Argument passed to (*j_cleanup)() */
+    COMMAND *deferred;	/* Commands that will execute when this job is done. */
+    sh_vptrfunc_t *j_cleanup; /* Cleanup function to call when job marked JDEAD */
+    PTR_T cleanarg;	/* Argument passed to (*j_cleanup)() */
 #endif /* JOB_CONTROL */
 } JOB;
 
 struct jobstats {
-  /* limits */
-  long c_childmax;
-  /* child process statistics */
-  int c_living;		/* running or stopped child processes */
-  int c_reaped;		/* exited child processes still in jobs list */
-  int c_injobs;		/* total number of child processes in jobs list */
-  /* child process totals */
-  int c_totforked;	/* total number of children this shell has forked */
-  int c_totreaped;	/* total number of children this shell has reaped */
-  /* job counters and indices */
-  int j_jobslots;	/* total size of jobs array */
-  int j_lastj;		/* last (newest) job allocated */
-  int j_firstj;		/* first (oldest) job allocated */
-  int j_njobs;		/* number of non-NULL jobs in jobs array */
-  int j_ndead;		/* number of JDEAD jobs in jobs array */
-  /* */
-  int j_current;	/* current job */
-  int j_previous;	/* previous job */
-  /* */
-  JOB *j_lastmade;	/* last job allocated by stop_pipeline */
-  JOB *j_lastasync;	/* last async job allocated by stop_pipeline */
+    /* limits */
+    long c_childmax;
+    /* child process statistics */
+    int c_living;		/* running or stopped child processes */
+    int c_reaped;		/* exited child processes still in jobs list */
+    int c_injobs;		/* total number of child processes in jobs list */
+    /* child process totals */
+    int c_totforked;	/* total number of children this shell has forked */
+    int c_totreaped;	/* total number of children this shell has reaped */
+    /* job counters and indices */
+    int j_jobslots;	/* total size of jobs array */
+    int j_lastj;		/* last (newest) job allocated */
+    int j_firstj;		/* first (oldest) job allocated */
+    int j_njobs;		/* number of non-NULL jobs in jobs array */
+    int j_ndead;		/* number of JDEAD jobs in jobs array */
+    /* */
+    int j_current;	/* current job */
+    int j_previous;	/* previous job */
+    /* */
+    JOB *j_lastmade;	/* last job allocated by stop_pipeline */
+    JOB *j_lastasync;	/* last async job allocated by stop_pipeline */
 };
 
 /* Revised to accommodate new hash table bgpids implementation. */
 typedef pid_t ps_index_t;
 
 struct pidstat {
-  ps_index_t bucket_next;
-  ps_index_t bucket_prev;
+    ps_index_t bucket_next;
+    ps_index_t bucket_prev;
 
-  pid_t pid;
-  bits16_t status;		/* only 8 bits really needed */
+    pid_t pid;
+    bits16_t status;		/* only 8 bits really needed */
 };
 
 struct bgpids {
-  struct pidstat *storage;	/* storage arena */
+    struct pidstat *storage;	/* storage arena */
 
-  ps_index_t head;
-  ps_index_t nalloc;
+    ps_index_t head;
+    ps_index_t nalloc;
 
-  int npid;
+    int npid;
 };
 
 #define NO_PIDSTAT (ps_index_t)-1
 
 /* standalone process status struct, without bgpids indexes */
 struct procstat {
-  pid_t pid;
-  bits16_t status;
+    pid_t pid;
+    bits16_t status;
 };
 
 /* A standalone singly-linked list of PROCESS *, used in various places
    including keeping track of process substitutions. */
 struct procchain {
-  PROCESS *head;
-  PROCESS *end;
-  int nproc;
+    PROCESS *head;
+    PROCESS *end;
+    int nproc;
 };
 
 #define NO_JOB  -1	/* An impossible job array index. */

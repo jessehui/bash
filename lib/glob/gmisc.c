@@ -3,7 +3,7 @@
    Copyright (C) 2010-2020 Free Software Foundation, Inc.
 
    This file is part of GNU Bash, the Bourne-Again SHell.
-   
+
    Bash is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
    the Free Software Foundation, either version 3 of the License, or
@@ -80,29 +80,30 @@ extern char *glob_patscan PARAMS((char *, char *, int));
    patterns x(...) */
 char *
 glob_dirscan (pat, dirsep)
-     char *pat;
-     int dirsep;
+char *pat;
+int dirsep;
 {
-  char *p, *d, *pe, *se;
+    char *p, *d, *pe, *se;
 
-  d = pe = se = 0;
-  for (p = pat; p && *p; p++)
-    {
-      if (extglob_pattern_p (p))
-	{
-	  if (se == 0)
-	    se = p + strlen (p) - 1;
-	  pe = glob_patscan (p + 2, se, 0);
-	  if (pe == 0)
-	    continue;
-	  else if (*pe == 0)
-	    break;
-	  p = pe - 1;	/* will do increment above */
-	  continue;
-	}
-      if (*p ==  dirsep)
-	d = p;
+    d = pe = se = 0;
+    for (p = pat; p && *p; p++) {
+        if (extglob_pattern_p (p)) {
+            if (se == 0) {
+                se = p + strlen (p) - 1;
+            }
+            pe = glob_patscan (p + 2, se, 0);
+            if (pe == 0) {
+                continue;
+            } else if (*pe == 0) {
+                break;
+            }
+            p = pe - 1;	/* will do increment above */
+            continue;
+        }
+        if (*p ==  dirsep) {
+            d = p;
+        }
     }
-  return d;
+    return d;
 }
 #endif /* EXTENDED_GLOB */

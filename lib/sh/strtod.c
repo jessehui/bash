@@ -3,7 +3,7 @@
 /* Copyright (C) 1991, 1992 Free Software Foundation, Inc.
 
    This file is part of GNU Bash, the Bourne Again SHell.
-   
+
    Bash is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
    the Free Software Foundation, either version 3 of the License, or
@@ -57,151 +57,160 @@ extern int locale_decpoint PARAMS((void));
    character after the last one used in the number is put in *ENDPTR.  */
 double
 strtod (nptr, endptr)
-     const char *nptr;
-     char **endptr;
+const char *nptr;
+char **endptr;
 {
-  register const char *s;
-  short sign;
+    register const char *s;
+    short sign;
 
-  /* The number so far.  */
-  double num;
+    /* The number so far.  */
+    double num;
 
-  int radixchar;
-  int got_dot;			/* Found a decimal point.  */
-  int got_digit;		/* Seen any digits.  */
+    int radixchar;
+    int got_dot;			/* Found a decimal point.  */
+    int got_digit;		/* Seen any digits.  */
 
-  /* The exponent of the number.  */
-  long int exponent;
+    /* The exponent of the number.  */
+    long int exponent;
 
-  if (nptr == NULL)
-    {
-      errno = EINVAL;
-      goto noconv;
+    if (nptr == NULL) {
+        errno = EINVAL;
+        goto noconv;
     }
 
-  s = nptr;
+    s = nptr;
 
-  /* Eat whitespace.  */
-  while (ISSPACE ((unsigned char)*s))
-    ++s;
-
-  /* Get the sign.  */
-  sign = *s == '-' ? -1 : 1;
-  if (*s == '-' || *s == '+')
-    ++s;
-
-  radixchar = locale_decpoint ();
-  num = 0.0;
-  got_dot = 0;
-  got_digit = 0;
-  exponent = 0;
-  for (;; ++s)
-    {
-      if (DIGIT (*s))
-	{
-	  got_digit = 1;
-
-	  /* Make sure that multiplication by 10 will not overflow.  */
-	  if (num > DBL_MAX * 0.1)
-	    /* The value of the digit doesn't matter, since we have already
-	       gotten as many digits as can be represented in a `double'.
-	       This doesn't necessarily mean the result will overflow.
-	       The exponent may reduce it to within range.
-
-	       We just need to record that there was another
-	       digit so that we can multiply by 10 later.  */
-	    ++exponent;
-	  else
-	    num = (num * 10.0) + (*s - '0');
-
-	  /* Keep track of the number of digits after the decimal point.
-	     If we just divided by 10 here, we would lose precision.  */
-	  if (got_dot)
-	    --exponent;
-	}
-      else if (!got_dot && *s == radixchar)
-	/* Record that we have found the decimal point.  */
-	got_dot = 1;
-      else
-	/* Any other character terminates the number.  */
-	break;
+    /* Eat whitespace.  */
+    while (ISSPACE ((unsigned char)*s)) {
+        ++s;
     }
 
-  if (!got_digit)
-    goto noconv;
-
-  if (TOLOWER ((unsigned char)*s) == 'e')
-    {
-      /* Get the exponent specified after the `e' or `E'.  */
-      int save = errno;
-      char *end;
-      long int exp;
-
-      errno = 0;
-      ++s;
-      exp = strtol (s, &end, 10);
-      if (errno == ERANGE)
-	{
-	  /* The exponent overflowed a `long int'.  It is probably a safe
-	     assumption that an exponent that cannot be represented by
-	     a `long int' exceeds the limits of a `double'.  */
-	  if (endptr != NULL)
-	    *endptr = end;
-	  if (exp < 0)
-	    goto underflow;
-	  else
-	    goto overflow;
-	}
-      else if (end == s)
-	/* There was no exponent.  Reset END to point to
-	   the 'e' or 'E', so *ENDPTR will be set there.  */
-	end = (char *) s - 1;
-      errno = save;
-      s = end;
-      exponent += exp;
+    /* Get the sign.  */
+    sign = *s == '-' ? -1 : 1;
+    if (*s == '-' || *s == '+') {
+        ++s;
     }
 
-  if (endptr != NULL)
-    *endptr = (char *) s;
+    radixchar = locale_decpoint ();
+    num = 0.0;
+    got_dot = 0;
+    got_digit = 0;
+    exponent = 0;
+    for (;; ++s) {
+        if (DIGIT (*s)) {
+            got_digit = 1;
 
-  if (num == 0.0)
-    return 0.0;
+            /* Make sure that multiplication by 10 will not overflow.  */
+            if (num > DBL_MAX * 0.1)
+                /* The value of the digit doesn't matter, since we have already
+                   gotten as many digits as can be represented in a `double'.
+                   This doesn't necessarily mean the result will overflow.
+                   The exponent may reduce it to within range.
 
-  /* Multiply NUM by 10 to the EXPONENT power,
-     checking for overflow and underflow.  */
+                   We just need to record that there was another
+                   digit so that we can multiply by 10 later.  */
+            {
+                ++exponent;
+            } else {
+                num = (num * 10.0) + (*s - '0');
+            }
 
-  if (exponent < 0)
-    {
-      if (num < DBL_MIN * pow (10.0, (double) -exponent))
-	goto underflow;
+            /* Keep track of the number of digits after the decimal point.
+               If we just divided by 10 here, we would lose precision.  */
+            if (got_dot) {
+                --exponent;
+            }
+        } else if (!got_dot && *s == radixchar)
+            /* Record that we have found the decimal point.  */
+        {
+            got_dot = 1;
+        } else
+            /* Any other character terminates the number.  */
+        {
+            break;
+        }
     }
-  else if (exponent > 0)
-    {
-      if (num > DBL_MAX * pow (10.0, (double) -exponent))
-	goto overflow;
+
+    if (!got_digit) {
+        goto noconv;
     }
 
-  num *= pow (10.0, (double) exponent);
+    if (TOLOWER ((unsigned char)*s) == 'e') {
+        /* Get the exponent specified after the `e' or `E'.  */
+        int save = errno;
+        char *end;
+        long int exp;
 
-  return num * sign;
+        errno = 0;
+        ++s;
+        exp = strtol (s, &end, 10);
+        if (errno == ERANGE) {
+            /* The exponent overflowed a `long int'.  It is probably a safe
+               assumption that an exponent that cannot be represented by
+               a `long int' exceeds the limits of a `double'.  */
+            if (endptr != NULL) {
+                *endptr = end;
+            }
+            if (exp < 0) {
+                goto underflow;
+            } else {
+                goto overflow;
+            }
+        } else if (end == s)
+            /* There was no exponent.  Reset END to point to
+               the 'e' or 'E', so *ENDPTR will be set there.  */
+        {
+            end = (char *) s - 1;
+        }
+        errno = save;
+        s = end;
+        exponent += exp;
+    }
+
+    if (endptr != NULL) {
+        *endptr = (char *) s;
+    }
+
+    if (num == 0.0) {
+        return 0.0;
+    }
+
+    /* Multiply NUM by 10 to the EXPONENT power,
+       checking for overflow and underflow.  */
+
+    if (exponent < 0) {
+        if (num < DBL_MIN * pow (10.0, (double) - exponent)) {
+            goto underflow;
+        }
+    } else if (exponent > 0) {
+        if (num > DBL_MAX * pow (10.0, (double) - exponent)) {
+            goto overflow;
+        }
+    }
+
+    num *= pow (10.0, (double) exponent);
+
+    return num * sign;
 
 overflow:
-  /* Return an overflow error.  */
-  errno = ERANGE;
-  return HUGE_VAL * sign;
+    /* Return an overflow error.  */
+    errno = ERANGE;
+    return HUGE_VAL * sign;
 
 underflow:
-  /* Return an underflow error.  */
-  if (endptr != NULL)
-    *endptr = (char *) nptr;
-  errno = ERANGE;
-  return 0.0;
+    /* Return an underflow error.  */
+    if (endptr != NULL) {
+        *endptr = (char *) nptr;
+    }
+    errno = ERANGE;
+    return 0.0;
 
 noconv:
-  /* There was no number.  */
-  if (endptr != NULL)
-    *endptr = (char *) nptr;
-  return 0.0;
+    /* There was no number.  */
+    if (endptr != NULL) {
+        *endptr = (char *) nptr;
+    }
+    return 0.0;
 }
 
 #endif /* !HAVE_STRTOD */

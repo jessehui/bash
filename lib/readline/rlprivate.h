@@ -4,7 +4,7 @@
 /* Copyright (C) 1999-2020 Free Software Foundation, Inc.
 
    This file is part of the GNU Readline Library (Readline), a library
-   for reading lines of text with interactive input and history editing.      
+   for reading lines of text with interactive input and history editing.
 
    Readline is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -68,53 +68,52 @@
 #define SF_PATTERN		0x10
 #define SF_NOCASE		0x20		/* unused so far */
 
-typedef struct  __rl_search_context
-{
-  int type;
-  int sflags;
+typedef struct  __rl_search_context {
+    int type;
+    int sflags;
 
-  char *search_string;
-  int search_string_index;
-  int search_string_size;
+    char *search_string;
+    int search_string_index;
+    int search_string_size;
 
-  char **lines;
-  char *allocated_line;    
-  int hlen;
-  int hindex;
+    char **lines;
+    char *allocated_line;
+    int hlen;
+    int hindex;
 
-  int save_point;
-  int save_mark;
-  int save_line;
-  int last_found_line;
-  char *prev_line_found;
+    int save_point;
+    int save_mark;
+    int save_line;
+    int last_found_line;
+    char *prev_line_found;
 
-  UNDO_LIST *save_undo_list;
+    UNDO_LIST *save_undo_list;
 
-  Keymap keymap;	/* used when dispatching commands in search string */
-  Keymap okeymap;	/* original keymap */
+    Keymap keymap;	/* used when dispatching commands in search string */
+    Keymap okeymap;	/* original keymap */
 
-  int history_pos;
-  int direction;
+    int history_pos;
+    int direction;
 
-  int prevc;
-  int lastc;
+    int prevc;
+    int lastc;
 #if defined (HANDLE_MULTIBYTE)
-  char mb[MB_LEN_MAX];
-  char pmb[MB_LEN_MAX];
+    char mb[MB_LEN_MAX];
+    char pmb[MB_LEN_MAX];
 #endif
 
-  char *sline;
-  int sline_len;
-  int sline_index;
+    char *sline;
+    int sline_len;
+    int sline_index;
 
-  char  *search_terminators;
+    char  *search_terminators;
 } _rl_search_cxt;
 
 struct _rl_cmd {
-  Keymap map;
-  int count;
-  int key;
-  rl_command_func_t *func;
+    Keymap map;
+    int count;
+    int key;
+    rl_command_func_t *func;
 };
 extern struct _rl_cmd _rl_pending_command;
 extern struct _rl_cmd *_rl_command_to_execute;
@@ -132,18 +131,17 @@ typedef int _rl_arg_cxt;
 #define KSEQ_SUBSEQ	0x02
 #define KSEQ_RECURSIVE	0x04
 
-typedef struct __rl_keyseq_context
-{
-  int flags;
-  int subseq_arg;
-  int subseq_retval;		/* XXX */
-  int okey;
+typedef struct __rl_keyseq_context {
+    int flags;
+    int subseq_arg;
+    int subseq_retval;		/* XXX */
+    int okey;
 
-  Keymap dmap;
-  Keymap oldmap;
+    Keymap dmap;
+    Keymap oldmap;
 
-  struct __rl_keyseq_context *ocxt;
-  int childval;
+    struct __rl_keyseq_context *ocxt;
+    int childval;
 } _rl_keyseq_cxt;
 
 /* vi-mode commands that use result of motion command to define boundaries */
@@ -156,24 +154,22 @@ typedef struct __rl_keyseq_context
 #define VMSTATE_READ	0x01
 #define VMSTATE_NUMARG	0x02
 
-typedef struct __rl_vimotion_context
-{
-  int op;
-  int state;
-  int flags;		/* reserved */
-  _rl_arg_cxt ncxt;
-  int numeric_arg;
-  int start, end;	/* rl_point, rl_end */
-  int key, motion;	/* initial key, motion command */
+typedef struct __rl_vimotion_context {
+    int op;
+    int state;
+    int flags;		/* reserved */
+    _rl_arg_cxt ncxt;
+    int numeric_arg;
+    int start, end;	/* rl_point, rl_end */
+    int key, motion;	/* initial key, motion command */
 } _rl_vimotion_cxt;
 
 /* fill in more as needed */
 /* `Generic' callback data and functions */
-typedef struct __rl_callback_generic_arg 
-{
-  int count;
-  int i1, i2;
-  /* add here as needed */
+typedef struct __rl_callback_generic_arg {
+    int count;
+    int i1, i2;
+    /* add here as needed */
 } _rl_callback_generic_arg;
 
 typedef int _rl_callback_func_t PARAMS((_rl_callback_generic_arg *));
@@ -259,7 +255,7 @@ extern void _rl_keyseq_cxt_dispose PARAMS((_rl_keyseq_cxt *));
 extern void _rl_keyseq_chain_dispose PARAMS((void));
 
 extern int _rl_dispatch_callback PARAMS((_rl_keyseq_cxt *));
-     
+
 /* callback.c */
 extern _rl_callback_generic_arg *_rl_callback_data_alloc PARAMS((int));
 extern void _rl_callback_data_dispose PARAMS((_rl_callback_generic_arg *));
@@ -371,7 +367,7 @@ extern void _rl_internal_char_cleanup PARAMS((void));
 extern void _rl_init_executing_keyseq PARAMS((void));
 extern void _rl_term_executing_keyseq PARAMS((void));
 extern void _rl_end_executing_keyseq PARAMS((void));
-extern void _rl_add_executing_keyseq PARAMS((int)); 
+extern void _rl_add_executing_keyseq PARAMS((int));
 
 /* rltty.c */
 extern int _rl_disable_tty_signals PARAMS((void));
@@ -471,8 +467,8 @@ extern int _rl_vi_domove_motion_cleanup PARAMS((int, _rl_vimotion_cxt *));
  *************************************************************************/
 
 /* bind.c */
-extern const char * const _rl_possible_control_prefixes[];
-extern const char * const _rl_possible_meta_prefixes[];
+extern const char *const _rl_possible_control_prefixes[];
+extern const char *const _rl_possible_meta_prefixes[];
 
 /* callback.c */
 extern _rl_callback_func_t *_rl_callback_func;

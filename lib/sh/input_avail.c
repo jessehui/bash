@@ -64,102 +64,109 @@ extern int errno;
    file descriptor FD; 0 if no data available.  Return -1 on error. */
 int
 input_avail (fd)
-     int fd;
+int fd;
 {
-  int result, chars_avail;
+    int result, chars_avail;
 #if defined(HAVE_SELECT)
-  fd_set readfds, exceptfds;
-  struct timeval timeout;
+    fd_set readfds, exceptfds;
+    struct timeval timeout;
 #endif
 
-  if (fd < 0)
-    return -1;
+    if (fd < 0) {
+        return -1;
+    }
 
-  chars_avail = 0;
+    chars_avail = 0;
 
 #if defined (HAVE_SELECT)
-  FD_ZERO (&readfds);
-  FD_ZERO (&exceptfds);
-  FD_SET (fd, &readfds);
-  FD_SET (fd, &exceptfds);
-  timeout.tv_sec = 0;
-  timeout.tv_usec = 0;
-  result = select (fd + 1, &readfds, (fd_set *)NULL, &exceptfds, &timeout);
-  return ((result <= 0) ? 0 : 1);
+    FD_ZERO (&readfds);
+    FD_ZERO (&exceptfds);
+    FD_SET (fd, &readfds);
+    FD_SET (fd, &exceptfds);
+    timeout.tv_sec = 0;
+    timeout.tv_usec = 0;
+    result = select (fd + 1, &readfds, (fd_set *)NULL, &exceptfds, &timeout);
+    return ((result <= 0) ? 0 : 1);
 #endif
 
 #if defined (FIONREAD)
-  errno = 0;
-  result = ioctl (fd, FIONREAD, &chars_avail);
-  if (result == -1 && errno == EIO)
-    return -1;
-  return (chars_avail);
+    errno = 0;
+    result = ioctl (fd, FIONREAD, &chars_avail);
+    if (result == -1 && errno == EIO) {
+        return -1;
+    }
+    return (chars_avail);
 #endif
 
-  return 0;
+    return 0;
 }
 
 /* Wait until NCHARS are available for reading on file descriptor FD.
    This can wait indefinitely. Return -1 on error. */
 int
 nchars_avail (fd, nchars)
-     int fd;
-     int nchars;
+int fd;
+int nchars;
 {
-  int result, chars_avail;
+    int result, chars_avail;
 #if defined(HAVE_SELECT)
-  fd_set readfds, exceptfds;
+    fd_set readfds, exceptfds;
 #endif
 #if defined (HAVE_PSELECT)
-  sigset_t set, oset;
+    sigset_t set, oset;
 #endif
 
-  if (fd < 0 || nchars < 0)
-    return -1;
-  if (nchars == 0)
-    return (input_avail (fd));
+    if (fd < 0 || nchars < 0) {
+        return -1;
+    }
+    if (nchars == 0) {
+        return (input_avail (fd));
+    }
 
-  chars_avail = 0;
+    chars_avail = 0;
 
 #if defined (HAVE_SELECT)
-  FD_ZERO (&readfds);
-  FD_ZERO (&exceptfds);
-  FD_SET (fd, &readfds);
-  FD_SET (fd, &exceptfds);
+    FD_ZERO (&readfds);
+    FD_ZERO (&exceptfds);
+    FD_SET (fd, &readfds);
+    FD_SET (fd, &exceptfds);
 #endif
 #if defined (HAVE_SELECT) || defined (HAVE_PSELECT)
-  sigprocmask (SIG_BLOCK, (sigset_t *)NULL, &set);
+    sigprocmask (SIG_BLOCK, (sigset_t *)NULL, &set);
 #  ifdef SIGCHLD
-  sigaddset (&set, SIGCHLD);
+    sigaddset (&set, SIGCHLD);
 #  endif
-  sigemptyset (&oset);
+    sigemptyset (&oset);
 #endif
 
-  while (1)
-    {
-      result = 0;
+    while (1) {
+        result = 0;
 #if defined (HAVE_PSELECT)
-      /* XXX - use pselect(2) to block SIGCHLD atomically */
-      result = pselect (fd + 1, &readfds, (fd_set *)NULL, &exceptfds, (struct timespec *)NULL, &set);
+        /* XXX - use pselect(2) to block SIGCHLD atomically */
+        result = pselect (fd + 1, &readfds, (fd_set *)NULL, &exceptfds, (struct timespec *)NULL,
+                          &set);
 #elif defined (HAVE_SELECT)
-      sigprocmask (SIG_BLOCK, &set, &oset);
-      result = select (fd + 1, &readfds, (fd_set *)NULL, &exceptfds, (struct timeval *)NULL);
-      sigprocmask (SIG_BLOCK, &oset, (sigset_t *)NULL);
+        sigprocmask (SIG_BLOCK, &set, &oset);
+        result = select (fd + 1, &readfds, (fd_set *)NULL, &exceptfds, (struct timeval *)NULL);
+        sigprocmask (SIG_BLOCK, &oset, (sigset_t *)NULL);
 #endif
-      if (result < 0)
-        return -1;
+        if (result < 0) {
+            return -1;
+        }
 
 #if defined (FIONREAD)
-      errno = 0;
-      result = ioctl (fd, FIONREAD, &chars_avail);
-      if (result == -1 && errno == EIO)
-        return -1;
-      if (chars_avail >= nchars)
-        break;
+        errno = 0;
+        result = ioctl (fd, FIONREAD, &chars_avail);
+        if (result == -1 && errno == EIO) {
+            return -1;
+        }
+        if (chars_avail >= nchars) {
+            break;
+        }
 #else
-      break;
+        break;
 #endif
     }
 
-  return 0;
+    return 0;
 }

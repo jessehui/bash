@@ -58,67 +58,67 @@ static int multiplier[7] = { 1, 100000, 10000, 1000, 100, 10, 1 };
    fractional parts. */
 int
 uconvert(s, ip, up, ep)
-     char *s;
-     long *ip, *up;
-     char **ep;
+char *s;
+long *ip, *up;
+char **ep;
 {
-  int n, mult;
-  long ipart, upart;
-  char *p;
+    int n, mult;
+    long ipart, upart;
+    char *p;
 
-  ipart = upart = 0;
-  mult = 1;
+    ipart = upart = 0;
+    mult = 1;
 
-  if (s && (*s == '-' || *s == '+'))
-    {
-      mult = (*s == '-') ? -1 : 1;
-      p = s + 1;
-    }
-  else
-    p = s;
-
-  for ( ; p && *p; p++)
-    {
-      if (*p == DECIMAL)		/* decimal point */
-	break;
-      if (DIGIT(*p) == 0)
-	RETURN(0);
-      ipart = (ipart * 10) + (*p - '0');
+    if (s && (*s == '-' || *s == '+')) {
+        mult = (*s == '-') ? -1 : 1;
+        p = s + 1;
+    } else {
+        p = s;
     }
 
-  if (p == 0 || *p == 0)	/* callers ensure p can never be 0; this is to shut up clang */
+    for ( ; p && *p; p++) {
+        if (*p == DECIMAL) {	/* decimal point */
+            break;
+        }
+        if (DIGIT(*p) == 0) {
+            RETURN(0);
+        }
+        ipart = (ipart * 10) + (*p - '0');
+    }
+
+    if (p == 0 || *p == 0) {	/* callers ensure p can never be 0; this is to shut up clang */
+        RETURN(1);
+    }
+
+    if (*p == DECIMAL) {
+        p++;
+    }
+
+    /* Look for up to six digits past a decimal point. */
+    for (n = 0; n < 6 && p[n]; n++) {
+        if (DIGIT(p[n]) == 0) {
+            if (ep) {
+                upart *= multiplier[n];
+                p += n;		/* To set EP */
+            }
+            RETURN(0);
+        }
+        upart = (upart * 10) + (p[n] - '0');
+    }
+
+    /* Now convert to millionths */
+    upart *= multiplier[n];
+
+    if (n == 6 && p[6] >= '5' && p[6] <= '9') {
+        upart++;    /* round up 1 */
+    }
+
+    if (ep) {
+        p += n;
+        while (DIGIT(*p)) {
+            p++;
+        }
+    }
+
     RETURN(1);
-
-  if (*p == DECIMAL)
-    p++;
-
-  /* Look for up to six digits past a decimal point. */
-  for (n = 0; n < 6 && p[n]; n++)
-    {
-      if (DIGIT(p[n]) == 0)
-	{
-	  if (ep)
-	    {
-	      upart *= multiplier[n];
-	      p += n;		/* To set EP */
-	    }
-	  RETURN(0);
-	}
-      upart = (upart * 10) + (p[n] - '0');
-    }
-
-  /* Now convert to millionths */
-  upart *= multiplier[n];
-
-  if (n == 6 && p[6] >= '5' && p[6] <= '9')
-    upart++;			/* round up 1 */
-
-  if (ep)
-    {
-      p += n;
-      while (DIGIT(*p))
-	p++;
-    }
-
-  RETURN(1);
 }

@@ -70,7 +70,7 @@ Copyright (C) 1999 Jeff Solomon
  * alternate interface. The first is the ability to interactively change the
  * prompt, which can't be done using the regular interface since rl_prompt is
  * read-only.
- * 
+ *
  * The second feature really highlights a subtle point when using the alternate
  * interface. That is, readline will not alter the terminal when inside your
  * callback handler. So let's so, your callback executes a user command that
@@ -99,16 +99,15 @@ tcflag_t old_lflag;
 cc_t     old_vtime;
 struct termios term;
 
-int 
-main()
-{
+int
+main() {
     fd_set fds;
 
     /* Adjust the terminal slightly before the handler is installed. Disable
      * canonical mode processing and set the input character time flag to be
      * non-blocking.
      */
-    if( tcgetattr(STDIN_FILENO, &term) < 0 ) {
+    if ( tcgetattr(STDIN_FILENO, &term) < 0 ) {
         perror("tcgetattr");
         exit(1);
     }
@@ -117,7 +116,7 @@ main()
     term.c_lflag &= ~ICANON;
     term.c_cc[VTIME] = 1;
     /* COMMENT LINE BELOW - see above */
-    if( tcsetattr(STDIN_FILENO, TCSANOW, &term) < 0 ) {
+    if ( tcsetattr(STDIN_FILENO, TCSANOW, &term) < 0 ) {
         perror("tcsetattr");
         exit(1);
     }
@@ -125,72 +124,69 @@ main()
     rl_add_defun("change-prompt", change_prompt, CTRL('t'));
     rl_callback_handler_install(get_prompt(), process_line);
 
-    while(1) {
-      FD_ZERO(&fds);
-      FD_SET(fileno(stdin), &fds);
+    while (1) {
+        FD_ZERO(&fds);
+        FD_SET(fileno(stdin), &fds);
 
-      if( select(FD_SETSIZE, &fds, NULL, NULL, NULL) < 0) {
-        perror("select");
-        exit(1);
-      }
+        if ( select(FD_SETSIZE, &fds, NULL, NULL, NULL) < 0) {
+            perror("select");
+            exit(1);
+        }
 
-      if( FD_ISSET(fileno(stdin), &fds) ) {
-        rl_callback_read_char();
-      }
+        if ( FD_ISSET(fileno(stdin), &fds) ) {
+            rl_callback_read_char();
+        }
     }
 }
 
 void
-process_line(char *line)
-{
-  if( line == NULL ) {
-    fprintf(stderr, "\n", line);
+process_line(char *line) {
+    if ( line == NULL ) {
+        fprintf(stderr, "\n", line);
 
-    /* reset the old terminal setting before exiting */
-    term.c_lflag     = old_lflag;
-    term.c_cc[VTIME] = old_vtime;
-    if( tcsetattr(STDIN_FILENO, TCSANOW, &term) < 0 ) {
-        perror("tcsetattr");
-        exit(1);
+        /* reset the old terminal setting before exiting */
+        term.c_lflag     = old_lflag;
+        term.c_cc[VTIME] = old_vtime;
+        if ( tcsetattr(STDIN_FILENO, TCSANOW, &term) < 0 ) {
+            perror("tcsetattr");
+            exit(1);
+        }
+        exit(0);
     }
-    exit(0);
-  }
 
-  if( strcmp(line, "sleep") == 0 ) {
-    sleep(3);
-  } else {
-    fprintf(stderr, "|%s|\n", line);
-  }
+    if ( strcmp(line, "sleep") == 0 ) {
+        sleep(3);
+    } else {
+        fprintf(stderr, "|%s|\n", line);
+    }
 
-  free (line);
+    free (line);
 }
 
 int
-change_prompt(void)
-{
-  /* toggle the prompt variable */
-  prompt = !prompt;
+change_prompt(void) {
+    /* toggle the prompt variable */
+    prompt = !prompt;
 
-  /* save away the current contents of the line */
-  strcpy(line_buf, rl_line_buffer);
+    /* save away the current contents of the line */
+    strcpy(line_buf, rl_line_buffer);
 
-  /* install a new handler which will change the prompt and erase the current line */
-  rl_callback_handler_install(get_prompt(), process_line);
+    /* install a new handler which will change the prompt and erase the current line */
+    rl_callback_handler_install(get_prompt(), process_line);
 
-  /* insert the old text on the new line */
-  rl_insert_text(line_buf);
+    /* insert the old text on the new line */
+    rl_insert_text(line_buf);
 
-  /* redraw the current line - this is an undocumented function. It invokes the
-   * redraw-current-line command.
-   */
-  rl_refresh_line(0, 0);
+    /* redraw the current line - this is an undocumented function. It invokes the
+     * redraw-current-line command.
+     */
+    rl_refresh_line(0, 0);
 }
 
 char *
-get_prompt(void)
-{
-  /* The prompts can even be different lengths! */
-  sprintf(prompt_buf, "%s", 
-    prompt ? "Hit ctrl-t to toggle prompt> " : "Pretty cool huh?> ");
-  return prompt_buf;
+get_prompt(void) {
+    /* The prompts can even be different lengths! */
+    sprintf(prompt_buf, "%s",
+            prompt ? "Hit ctrl-t to toggle prompt> " : "Pretty cool huh?> ");
+    return prompt_buf;
 }

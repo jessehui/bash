@@ -32,25 +32,25 @@
    from PWCS required to display MAX characters on the screen. */
 int
 wcsnwidth(pwcs, n, max)
-     const wchar_t *pwcs;
-     size_t n, max;
+const wchar_t *pwcs;
+size_t n, max;
 {
-  wchar_t wc, *ws;
-  int len, l;
+    wchar_t wc, *ws;
+    int len, l;
 
-  len = 0;
-  ws = (wchar_t *)pwcs;
-  while (n-- > 0 && (wc = *ws++) != L'\0')
-    {
-      l = wcwidth (wc);
-      if (l < 0)
-	return (-1);
-      else if (l == max - len)
-        return (ws - pwcs);
-      else if (l > max - len)
-        return (--ws - pwcs);
-      len += l;
+    len = 0;
+    ws = (wchar_t *)pwcs;
+    while (n-- > 0 && (wc = *ws++) != L'\0') {
+        l = wcwidth (wc);
+        if (l < 0) {
+            return (-1);
+        } else if (l == max - len) {
+            return (ws - pwcs);
+        } else if (l > max - len) {
+            return (--ws - pwcs);
+        }
+        len += l;
     }
-  return (ws - pwcs);
+    return (ws - pwcs);
 }
 #endif

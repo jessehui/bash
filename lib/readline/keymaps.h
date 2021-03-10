@@ -3,7 +3,7 @@
 /* Copyright (C) 1987, 1989, 1992 Free Software Foundation, Inc.
 
    This file is part of the GNU Readline Library (Readline), a library
-   for reading lines of text with interactive input and history editing.      
+   for reading lines of text with interactive input and history editing.
 
    Readline is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -42,8 +42,8 @@ extern "C" {
    address of a keymap to indirect through.
    TYPE says which kind of thing FUNCTION is. */
 typedef struct _keymap_entry {
-  char type;
-  rl_command_func_t *function;
+    char type;
+    rl_command_func_t *function;
 } KEYMAP_ENTRY;
 
 /* This must be large enough to hold bindings for all of the characters

@@ -52,50 +52,51 @@ int
 sleep_builtin (list)
 WORD_LIST	*list;
 {
-	long	sec, usec;
-	char	*ep;
-	int	r, mul;
-	time_t	t;
+    long	sec, usec;
+    char	*ep;
+    int	r, mul;
+    time_t	t;
 
-	if (list == 0) {
-		builtin_usage();
-		return(EX_USAGE);
-	}
+    if (list == 0) {
+        builtin_usage();
+        return (EX_USAGE);
+    }
 
-	/* Skip over `--' */
-	if (list->word && ISOPTION (list->word->word, '-'))
-		list = list->next;
+    /* Skip over `--' */
+    if (list->word && ISOPTION (list->word->word, '-')) {
+        list = list->next;
+    }
 
-	if (*list->word->word == '-' || list->next) {
-		builtin_usage ();
-		return (EX_USAGE);
-	}
+    if (*list->word->word == '-' || list->next) {
+        builtin_usage ();
+        return (EX_USAGE);
+    }
 
-    	r = uconvert(list->word->word, &sec, &usec, &ep);
-	/* Maybe postprocess conversion failures here based on EP */
-    		
-    	if (r) {
-		fsleep(sec, usec);
-		QUIT;
-		return(EXECUTION_SUCCESS);
-    	}
+    r = uconvert(list->word->word, &sec, &usec, &ep);
+    /* Maybe postprocess conversion failures here based on EP */
 
-	builtin_error("%s: bad sleep interval", list->word->word);
-	return (EXECUTION_FAILURE);
+    if (r) {
+        fsleep(sec, usec);
+        QUIT;
+        return (EXECUTION_SUCCESS);
+    }
+
+    builtin_error("%s: bad sleep interval", list->word->word);
+    return (EXECUTION_FAILURE);
 }
 
 static char *sleep_doc[] = {
-	"Suspend execution for specified period.",
-	""
-	"sleep suspends execution for a minimum of SECONDS[.FRACTION] seconds.",
-	(char *)NULL
+    "Suspend execution for specified period.",
+    ""
+    "sleep suspends execution for a minimum of SECONDS[.FRACTION] seconds.",
+    (char *)NULL
 };
 
 struct builtin sleep_struct = {
-	"sleep",
-	sleep_builtin,
-	BUILTIN_ENABLED,
-	sleep_doc,
-	"sleep seconds[.fraction]",
-	0
+    "sleep",
+    sleep_builtin,
+    BUILTIN_ENABLED,
+    sleep_doc,
+    "sleep seconds[.fraction]",
+    0
 };

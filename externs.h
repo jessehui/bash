@@ -199,7 +199,8 @@ extern void print_clock_t ();
 
 /* Declarations for functions defined in lib/sh/dprintf.c */
 #if !defined (HAVE_DPRINTF)
-extern void dprintf PARAMS((int, const char *, ...))  __attribute__((__format__ (printf, 2, 3)));
+extern void dprintf PARAMS((int, const char *, ...))  __attribute__((__format__ (printf,
+        2, 3)));
 #endif
 
 /* Declarations for functions defined in lib/sh/fmtulong.c */
@@ -380,9 +381,9 @@ extern size_t strftime PARAMS((char *, size_t, const char *, const struct tm *))
 
 /* This is a general-purpose argv-style array struct. */
 typedef struct _list_of_strings {
-  char **list;
-  int list_size;
-  int list_len;
+    char **list;
+    int list_size;
+    int list_len;
 } STRINGLIST;
 
 typedef int sh_strlist_map_func_t PARAMS((char *));

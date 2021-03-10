@@ -3,7 +3,7 @@
 /* Copyright (C) 1987-2020 Free Software Foundation, Inc.
 
    This file is part of the GNU Readline Library (Readline), a library
-   for reading lines of text with interactive input and history editing.      
+   for reading lines of text with interactive input and history editing.
 
    Readline is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -55,10 +55,10 @@ enum undo_code { UNDO_DELETE, UNDO_INSERT, UNDO_BEGIN, UNDO_END };
 
 /* What an element of THE_UNDO_LIST looks like. */
 typedef struct undo_list {
-  struct undo_list *next;
-  int start, end;		/* Where the change took place. */
-  char *text;			/* The text to insert, if undoing a delete. */
-  enum undo_code what;		/* Delete, Insert, Begin, End. */
+    struct undo_list *next;
+    int start, end;		/* Where the change took place. */
+    char *text;			/* The text to insert, if undoing a delete. */
+    enum undo_code what;		/* Delete, Insert, Begin, End. */
 } UNDO_LIST;
 
 /* The current undo list for RL_LINE_BUFFER. */
@@ -66,8 +66,8 @@ extern UNDO_LIST *rl_undo_list;
 
 /* The data structure for mapping textual names to code addresses. */
 typedef struct _funmap {
-  const char *name;
-  rl_command_func_t *function;
+    const char *name;
+    rl_command_func_t *function;
 } FUNMAP;
 
 extern FUNMAP **funmap;
@@ -316,7 +316,8 @@ extern int rl_unbind_command_in_map PARAMS((const char *, Keymap));
 extern int rl_bind_keyseq PARAMS((const char *, rl_command_func_t *));
 extern int rl_bind_keyseq_in_map PARAMS((const char *, rl_command_func_t *, Keymap));
 extern int rl_bind_keyseq_if_unbound PARAMS((const char *, rl_command_func_t *));
-extern int rl_bind_keyseq_if_unbound_in_map PARAMS((const char *, rl_command_func_t *, Keymap));
+extern int rl_bind_keyseq_if_unbound_in_map PARAMS((const char *, rl_command_func_t *,
+        Keymap));
 extern int rl_generic_bind PARAMS((int, const char *, char *, Keymap));
 
 extern char *rl_variable_value PARAMS((const char *));
@@ -334,12 +335,13 @@ extern char *rl_untranslate_keyseq PARAMS((int));
 
 extern rl_command_func_t *rl_named_function PARAMS((const char *));
 extern rl_command_func_t *rl_function_of_keyseq PARAMS((const char *, Keymap, int *));
-extern rl_command_func_t *rl_function_of_keyseq_len PARAMS((const char *, size_t, Keymap, int *));
+extern rl_command_func_t *rl_function_of_keyseq_len PARAMS((const char *, size_t, Keymap,
+        int *));
 
 extern void rl_list_funmap_names PARAMS((void));
 extern char **rl_invoking_keyseqs_in_map PARAMS((rl_command_func_t *, Keymap));
 extern char **rl_invoking_keyseqs PARAMS((rl_command_func_t *));
- 
+
 extern void rl_function_dumper PARAMS((int));
 extern void rl_macro_dumper PARAMS((int));
 extern void rl_variable_dumper PARAMS((int));
@@ -464,7 +466,7 @@ extern void rl_free_line_state PARAMS((void));
 extern int rl_pending_signal PARAMS((void));
 extern void rl_check_signals PARAMS((void));
 
-extern void rl_echo_signal_char PARAMS((int)); 
+extern void rl_echo_signal_char PARAMS((int));
 
 extern int rl_set_paren_blink_timeout PARAMS((int));
 
@@ -591,7 +593,7 @@ extern rl_hook_func_t *rl_startup_hook;
    readline_internal_setup () returns and readline_internal starts
    reading input characters. */
 extern rl_hook_func_t *rl_pre_input_hook;
-      
+
 /* The address of a function to call periodically while Readline is
    awaiting character input, or NULL, for no event handling. */
 extern rl_hook_func_t *rl_event_hook;
@@ -697,7 +699,7 @@ extern /*const*/ char *rl_completer_word_break_characters;
 extern rl_cpvfunc_t *rl_completion_word_break_hook;
 
 /* List of characters which can be used to quote a substring of the line.
-   Completion occurs on the entire substring, and within the substring   
+   Completion occurs on the entire substring, and within the substring
    rl_completer_word_break_characters are treated as any other character,
    unless they also appear within this list. */
 extern const char *rl_completer_quote_characters;
@@ -859,7 +861,7 @@ extern int rl_inhibit_completion;
    readline-6.2.  This should be used with care, because it can result in
    readline receiving signals and not handling them until it's called again
    via rl_callback_read_char, thereby stealing them from the application.
-   By default, signal handlers are only active while readline is active. */   
+   By default, signal handlers are only active while readline is active. */
 extern int rl_persistent_signal_handlers;
 
 /* Input error; can be returned by (*rl_getc_function) if readline is reading
@@ -912,51 +914,51 @@ extern int rl_persistent_signal_handlers;
 #define RL_ISSTATE(x)		(rl_readline_state & (x))
 
 struct readline_state {
-  /* line state */
-  int point;
-  int end;
-  int mark;
-  int buflen;
-  char *buffer;
-  UNDO_LIST *ul;
-  char *prompt;
+    /* line state */
+    int point;
+    int end;
+    int mark;
+    int buflen;
+    char *buffer;
+    UNDO_LIST *ul;
+    char *prompt;
 
-  /* global state */
-  int rlstate;
-  int done;
-  Keymap kmap;
+    /* global state */
+    int rlstate;
+    int done;
+    Keymap kmap;
 
-  /* input state */
-  rl_command_func_t *lastfunc;
-  int insmode;
-  int edmode;
-  char *kseq;
-  int kseqlen;
+    /* input state */
+    rl_command_func_t *lastfunc;
+    int insmode;
+    int edmode;
+    char *kseq;
+    int kseqlen;
 
-  int pendingin;
-  FILE *inf;
-  FILE *outf;
-  char *macro;
+    int pendingin;
+    FILE *inf;
+    FILE *outf;
+    char *macro;
 
-  /* signal state */
-  int catchsigs;
-  int catchsigwinch;
+    /* signal state */
+    int catchsigs;
+    int catchsigwinch;
 
-  /* search state */
+    /* search state */
 
-  /* completion state */
-  rl_compentry_func_t *entryfunc;
-  rl_compentry_func_t *menuentryfunc;
-  rl_compignore_func_t *ignorefunc;
-  rl_completion_func_t *attemptfunc;
-  char *wordbreakchars;
+    /* completion state */
+    rl_compentry_func_t *entryfunc;
+    rl_compentry_func_t *menuentryfunc;
+    rl_compignore_func_t *ignorefunc;
+    rl_completion_func_t *attemptfunc;
+    char *wordbreakchars;
 
-  /* options state */
+    /* options state */
 
-  /* hook state */
-  
-  /* reserved for future expansion, so the struct size doesn't change */
-  char reserved[64];
+    /* hook state */
+
+    /* reserved for future expansion, so the struct size doesn't change */
+    char reserved[64];
 };
 
 extern int rl_save_state PARAMS((struct readline_state *));

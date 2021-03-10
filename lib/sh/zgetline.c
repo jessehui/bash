@@ -62,64 +62,58 @@ typedef ssize_t creadfunc_t PARAMS((int, char *));
 
 ssize_t
 zgetline (fd, lineptr, n, delim, unbuffered_read)
-     int fd;
-     char **lineptr;
-     size_t *n;
-     int delim;
-     int unbuffered_read;
+int fd;
+char **lineptr;
+size_t *n;
+int delim;
+int unbuffered_read;
 {
-  int nr, retval;
-  char *line, c;
+    int nr, retval;
+    char *line, c;
 
-  if (lineptr == 0 || n == 0 || (*lineptr == 0 && *n != 0))
-    return -1;
-
-  nr = 0;
-  line = *lineptr;
-  
-  while (1)
-    {
-      retval = unbuffered_read ? zread (fd, &c, 1) : zreadc(fd, &c);
-
-      if (retval <= 0)
-	{
-	  if (line && nr > 0)
-	    line[nr] = '\0';
-	  break;
-	}
-
-      if (nr + 2 >= *n)
-	{
-	  size_t new_size;
-
-	  new_size = (*n == 0) ? GET_LINE_INITIAL_ALLOCATION : *n * 2;
-	  line = (*n >= new_size) ? NULL : xrealloc (*lineptr, new_size);
-
-	  if (line)
-	    {
-	      *lineptr = line;
-	      *n = new_size;
-	    }
-	  else
-	    {
-	      if (*n > 0)
-		{
-		  (*lineptr)[*n - 1] = '\0';
-		  nr = *n - 2;
-		}
-	      break;
-	    }
-	}
-
-      line[nr] = c;
-      nr++;
-
-      if (c == delim)
-	{
-	  line[nr] = '\0';
-	  break;
-	}
+    if (lineptr == 0 || n == 0 || (*lineptr == 0 && *n != 0)) {
+        return -1;
     }
 
-  return nr - 1;
+    nr = 0;
+    line = *lineptr;
+
+    while (1) {
+        retval = unbuffered_read ? zread (fd, &c, 1) : zreadc(fd, &c);
+
+        if (retval <= 0) {
+            if (line && nr > 0) {
+                line[nr] = '\0';
+            }
+            break;
+        }
+
+        if (nr + 2 >= *n) {
+            size_t new_size;
+
+            new_size = (*n == 0) ? GET_LINE_INITIAL_ALLOCATION : *n * 2;
+            line = (*n >= new_size) ? NULL : xrealloc (*lineptr, new_size);
+
+            if (line) {
+                *lineptr = line;
+                *n = new_size;
+            } else {
+                if (*n > 0) {
+                    (*lineptr)[*n - 1] = '\0';
+                    nr = *n - 2;
+                }
+                break;
+            }
+        }
+
+        line[nr] = c;
+        nr++;
+
+        if (c == delim) {
+            line[nr] = '\0';
+            break;
+        }
+    }
+
+    return nr - 1;
 }

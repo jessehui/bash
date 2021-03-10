@@ -55,9 +55,9 @@
    text).  */
 char *
 GETTEXT (msgid)
-     const char *msgid;
+const char *msgid;
 {
-  return DCGETTEXT (NULL, msgid, LC_MESSAGES);
+    return DCGETTEXT (NULL, msgid, LC_MESSAGES);
 }
 
 #ifdef _LIBC

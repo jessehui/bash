@@ -49,31 +49,31 @@ extern struct passwd *getpwuid ();
 #endif /* !HAVE_GETPW_DECLS */
 
 char *
-get_env_value (char *varname)
-{
-  return ((char *)getenv (varname));
+get_env_value (char *varname) {
+    return ((char *)getenv (varname));
 }
 
 /* If we're not using $HOME, assume that the passwd file information won't
    change while this shell instance is running. */
 char *
-get_home_dir (void)
-{
-  static char *home_dir = (char *)NULL;
-  struct passwd *entry;
+get_home_dir (void) {
+    static char *home_dir = (char *)NULL;
+    struct passwd *entry;
 
-  if (home_dir)
-    return (home_dir);
+    if (home_dir) {
+        return (home_dir);
+    }
 
 #if defined (HAVE_GETPWUID)
-  entry = getpwuid (getuid ());
-  if (entry)
-    home_dir = savestring (entry->pw_dir);
+    entry = getpwuid (getuid ());
+    if (entry) {
+        home_dir = savestring (entry->pw_dir);
+    }
 #endif
 
 #if defined (HAVE_GETPWENT)
-  endpwent ();		/* some systems need this */
+    endpwent ();		/* some systems need this */
 #endif
 
-  return (home_dir);
+    return (home_dir);
 }

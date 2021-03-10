@@ -74,24 +74,25 @@ extern void sh_set_lines_and_columns PARAMS((int, int));
 
 void
 get_new_window_size (from_sig, rp, cp)
-     int from_sig;
-     int *rp, *cp;
+int from_sig;
+int *rp, *cp;
 {
 #if defined (TIOCGWINSZ)
-  struct winsize win;
-  int tty;
+    struct winsize win;
+    int tty;
 
-  tty = input_tty ();
-  if (tty >= 0 && (ioctl (tty, TIOCGWINSZ, &win) == 0) &&
-      win.ws_row > 0 && win.ws_col > 0)
-    {
-      sh_set_lines_and_columns (win.ws_row, win.ws_col);
+    tty = input_tty ();
+    if (tty >= 0 && (ioctl (tty, TIOCGWINSZ, &win) == 0) &&
+            win.ws_row > 0 && win.ws_col > 0) {
+        sh_set_lines_and_columns (win.ws_row, win.ws_col);
 #if defined (READLINE)
-      rl_set_screen_size (win.ws_row, win.ws_col);
-      if (rp)
-	*rp = win.ws_row;
-      if (cp)
-	*cp = win.ws_col;
+        rl_set_screen_size (win.ws_row, win.ws_col);
+        if (rp) {
+            *rp = win.ws_row;
+        }
+        if (cp) {
+            *cp = win.ws_col;
+        }
 #endif
     }
 #endif

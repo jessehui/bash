@@ -61,53 +61,53 @@ extern unsigned long long strtoull PARAMS((const char *, char **, int));
 
 uintmax_t
 strtoumax (ptr, endptr, base)
-     const char *ptr;
-     char **endptr;
-     int base;
+const char *ptr;
+char **endptr;
+int base;
 {
 #if HAVE_UNSIGNED_LONG_LONG
-  verify (size_is_that_of_unsigned_long_or_unsigned_long_long,
-	  (sizeof (uintmax_t) == sizeof (unsigned long) ||
-	   sizeof (uintmax_t) == sizeof (unsigned long long)));
+    verify (size_is_that_of_unsigned_long_or_unsigned_long_long,
+            (sizeof (uintmax_t) == sizeof (unsigned long) ||
+             sizeof (uintmax_t) == sizeof (unsigned long long)));
 
-  if (sizeof (uintmax_t) != sizeof (unsigned long))
-    return (strtoull (ptr, endptr, base));
+    if (sizeof (uintmax_t) != sizeof (unsigned long)) {
+        return (strtoull (ptr, endptr, base));
+    }
 #else
-  verify (size_is_that_of_unsigned_long, sizeof (uintmax_t) == sizeof (unsigned long));
+    verify (size_is_that_of_unsigned_long, sizeof (uintmax_t) == sizeof (unsigned long));
 #endif
 
-  return (strtoul (ptr, endptr, base));
+    return (strtoul (ptr, endptr, base));
 }
 
 #ifdef TESTING
 # include <stdio.h>
 int
-main ()
-{
-  char *p, *endptr;
-  uintmax_t x;
+main () {
+    char *p, *endptr;
+    uintmax_t x;
 #if HAVE_UNSIGNED_LONG_LONG
-  unsigned long long y;
+    unsigned long long y;
 #endif
-  unsigned long z;
+    unsigned long z;
 
-  printf ("sizeof uintmax_t: %d\n", sizeof (uintmax_t));
+    printf ("sizeof uintmax_t: %d\n", sizeof (uintmax_t));
 
 #if HAVE_UNSIGNED_LONG_LONG
-  printf ("sizeof unsigned long long: %d\n", sizeof (unsigned long long));
+    printf ("sizeof unsigned long long: %d\n", sizeof (unsigned long long));
 #endif
-  printf ("sizeof unsigned long: %d\n", sizeof (unsigned long));
+    printf ("sizeof unsigned long: %d\n", sizeof (unsigned long));
 
-  x = strtoumax("42", &endptr, 10);
+    x = strtoumax("42", &endptr, 10);
 #if HAVE_LONG_LONG
-  y = strtoull("42", &endptr, 10);
+    y = strtoull("42", &endptr, 10);
 #else
-  y = 0;
+    y = 0;
 #endif
-  z = strtoul("42", &endptr, 10);
+    z = strtoul("42", &endptr, 10);
 
-  printf ("%llu %llu %lu\n", x, y, z);
+    printf ("%llu %llu %lu\n", x, y, z);
 
-  exit (0);
+    exit (0);
 }
 #endif

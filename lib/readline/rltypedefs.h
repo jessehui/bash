@@ -3,7 +3,7 @@
 /* Copyright (C) 2000-2011 Free Software Foundation, Inc.
 
    This file is part of the GNU Readline Library (Readline), a library
-   for reading lines of text with interactive input and history editing.      
+   for reading lines of text with interactive input and history editing.
 
    Readline is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -88,8 +88,8 @@ typedef void rl_vcppfunc_t PARAMS((char **));
 
 typedef char *rl_cpvfunc_t PARAMS((void));
 typedef char *rl_cpifunc_t PARAMS((int));
-typedef char *rl_cpcpfunc_t PARAMS((char  *));
-typedef char *rl_cpcppfunc_t PARAMS((char  **));
+typedef char *rl_cpcpfunc_t PARAMS((char *));
+typedef char *rl_cpcppfunc_t PARAMS((char **));
 
 #endif /* _RL_FUNCTION_TYPEDEF */
 

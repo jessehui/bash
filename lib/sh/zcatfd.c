@@ -45,30 +45,26 @@ extern int zwrite PARAMS((int, char *, ssize_t));
    error messages (not used right now). */
 int
 zcatfd (fd, ofd, fn)
-     int fd, ofd;
-     char *fn;
+int fd, ofd;
+char *fn;
 {
-  ssize_t nr;
-  int rval;
-  char lbuf[ZBUFSIZ];
+    ssize_t nr;
+    int rval;
+    char lbuf[ZBUFSIZ];
 
-  rval = 0;
-  while (1)
-    {
-      nr = zread (fd, lbuf, sizeof (lbuf));
-      if (nr == 0)
-	break;
-      else if (nr < 0)
-	{
-	  rval = -1;
-	  break;
-	}
-      else if (zwrite (ofd, lbuf, nr) < 0)
-	{
-	  rval = -1;
-	  break;
-	}
+    rval = 0;
+    while (1) {
+        nr = zread (fd, lbuf, sizeof (lbuf));
+        if (nr == 0) {
+            break;
+        } else if (nr < 0) {
+            rval = -1;
+            break;
+        } else if (zwrite (ofd, lbuf, nr) < 0) {
+            rval = -1;
+            break;
+        }
     }
 
-  return rval;
+    return rval;
 }
