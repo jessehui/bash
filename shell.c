@@ -366,6 +366,7 @@ main (argc, argv, env)
      char **argv, **env;
 #endif /* !NO_MAIN_ENV_ARG */
 {
+  printf("[%d] bash main: argv[1] = %s\n", getpid(), argv[1]);
   register int i;
   int code, old_errexit_flag;
 #if defined (RESTRICTED_SHELL)

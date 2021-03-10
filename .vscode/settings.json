@@ -1,0 +1,9 @@
+{
+    "files.associations": {
+        "fstream": "cpp",
+        "*.tcc": "cpp",
+        "*.y": "c",
+        "stdio.h": "c"
+    },
+    "editor.tabSize": 8
+}

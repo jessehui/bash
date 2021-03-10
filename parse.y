@@ -3289,13 +3289,12 @@ read_token (command)
   /* Read a single word from input.  Start by skipping blanks. */
   while ((character = shell_getc (1)) != EOF && shellblank (character))
     ;
-
+  printf("c = %c\n", character);
   if (character == EOF)
     {
       EOF_Reached = 1;
       return (yacc_EOF);
     }
-
   /* If we hit the end of the string and we're not expanding an alias (e.g.,
      we are eval'ing a string that is an incomplete command), return EOF */
   if (character == '\0' && bash_input.type == st_string && expanding_alias() == 0)

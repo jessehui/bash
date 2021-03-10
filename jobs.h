@@ -28,6 +28,13 @@
 
 #include "posixwait.h"
 
+#define _GNU_SOURCE
+#include <pthread.h>
+#include <spawn.h>
+#include "findcmd.h"
+#include <sys/syscall.h>
+#include <assert.h>
+
 /* Defines controlling the fashion in which jobs are listed. */
 #define JLIST_STANDARD       0
 #define JLIST_LONG	     1
@@ -190,6 +197,16 @@ struct procchain {
   int nproc;
 };
 
+struct child_args {
+  int async_p;
+  int flags;
+  char *command;
+  SIMPLE_COM *cmd_list;
+  int pipe_in;
+  int pipe_out;
+  struct fd_bitmap * fds_to_close;
+};
+
 #define NO_JOB  -1	/* An impossible job array index. */
 #define DUP_JOB -2	/* A possible return value for get_job_spec (). */
 #define BAD_JOBSPEC -3	/* Bad syntax for job spec. */
@@ -271,7 +288,9 @@ extern void list_stopped_jobs PARAMS((int));
 extern void list_running_jobs PARAMS((int));
 
 extern pid_t make_child PARAMS((char *, int));
-
+extern pthread_t make_child_without_fork PARAMS((char *, int, SIMPLE_COM *, int, int));
+extern pthread_t make_subshell_without_fork PARAMS((char *, int, int, int, struct fd_bitmap*, void *(void *))); 
+extern pthread_t make_child_without_fork_for_subst PARAMS((char *, int, int, int));
 extern int get_tty_state PARAMS((void));
 extern int set_tty_state PARAMS((void));
 
