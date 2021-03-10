@@ -7798,7 +7798,8 @@ const char *line;
        parenthesized command and add the semicolon. */
     /*)(*/
     if (token_before_that == ')') {
-        if (two_tokens_ago == '(')	/*)*/ {	/* function def */
+        if (two_tokens_ago == '(') {	/*)*/
+            /* function def */
             return " ";
         }
         /* This does not work for subshells inside case statement

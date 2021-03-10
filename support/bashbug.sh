@@ -29,7 +29,7 @@
 MACHINE="x86_64"
 OS="linux-gnu"
 CC="gcc"
-CFLAGS="-g -O0 "
+CFLAGS="-D DEBUG=1 -g -O0 "
 RELEASE="5.1"
 PATCHLEVEL="!PATCHLEVEL!"
 RELSTATUS="release"

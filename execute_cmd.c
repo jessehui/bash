@@ -17,7 +17,6 @@
    You should have received a copy of the GNU General Public License
    along with Bash.  If not, see <http://www.gnu.org/licenses/>.
 */
-
 #include "config.h"
 
 #if !defined (__GNUC__) && !defined (HAVE_ALLOCA_H) && defined (_AIX)
@@ -117,6 +116,8 @@ extern char *glob_argv_flags;
 #endif
 
 extern int close PARAMS((int));
+extern void itrace PARAMS((const char *, ...)) __attribute__ ((__format__ (printf, 1,
+        2)));
 
 /* Static functions defined and used in this file. */
 static void close_pipes PARAMS((int, int));
@@ -4226,6 +4227,7 @@ char *pathname;
     return ret;
 }
 
+// async = 0 means processing in the front.
 /* The meaty part of all the executions.  We have to start hacking the
    real execution of commands here.  Fork a process, set things up,
    execute the command. */
@@ -4235,6 +4237,12 @@ SIMPLE_COM *simple_command;
 int pipe_in, pipe_out, async;
 struct fd_bitmap *fds_to_close;
 {
+    itrace("execute simple command: ");
+    WORD_LIST *current = simple_command->words;
+    while ( current != NULL) {
+        itrace(" %s ", current->word->word);
+        current = current->next;
+    }
     WORD_LIST *words, *lastword;
     char *command_line, *lastarg, *temp;
     int first_word_quoted, result, builtin_is_special, already_forked, dofork;
@@ -4311,6 +4319,8 @@ struct fd_bitmap *fds_to_close;
         dofork = 0;
     }
 
+    // if it is background task (with "&" at the back) or exists pipe, make_child will
+    // happen here.
     if (dofork) {
         char *p;
 
@@ -5444,6 +5454,12 @@ int pipe_in, pipe_out, async;
 struct fd_bitmap *fds_to_close;
 int cmdflags;
 {
+    itrace("execute disk command: ");
+    WORD_LIST *current = words;
+    while ( current != NULL) {
+        itrace(" %s ", current->word->word);
+        current = current->next;
+    }
     char *pathname, *command, **args, *p;
     int nofork, stdpath, result, fork_flags;
     pid_t pid;

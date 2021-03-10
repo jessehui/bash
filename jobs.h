@@ -75,6 +75,15 @@ struct pipeline_saver {
     struct pipeline_saver *next;
 };
 
+struct nofork_child_args {
+    int async;
+    int pipe_in;
+    int pipe_out;
+    char *command_str;
+    void *cmd_list; // could be changed by different command type (SIMPLE_CMD etc.)
+    int ret;
+};
+
 /* PALIVE really means `not exited' */
 #define PSTOPPED(p)	(WIFSTOPPED((p)->status))
 #define PRUNNING(p)	((p)->running == PS_RUNNING)
@@ -271,6 +280,7 @@ extern void list_stopped_jobs PARAMS((int));
 extern void list_running_jobs PARAMS((int));
 
 extern pid_t make_child PARAMS((char *, int));
+extern pthread_t make_child_without_fork_for_subst PARAMS((char *, int, int, int));
 
 extern int get_tty_state PARAMS((void));
 extern int set_tty_state PARAMS((void));

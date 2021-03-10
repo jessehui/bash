@@ -6190,6 +6190,7 @@ char *string;
 int quoted;
 int flags;
 {
+    itrace("function: %s", __func__);
     pid_t pid, old_pid, old_pipeline_pgrp, old_async_pid;
     char *istring, *s;
     int result, fildes[2], function_value, pflags, rc, tflag, fork_flags;
@@ -6254,7 +6255,9 @@ int flags;
 
     old_async_pid = last_asynchronous_pid;
     fork_flags = (subshell_environment & SUBSHELL_ASYNC) ? FORK_ASYNC : 0;
-    pid = make_child ((char *)NULL, fork_flags | FORK_NOTERM);
+    // pid = make_child ((char *)NULL, fork_flags | FORK_NOTERM);
+    pid = getpid();
+    pthread_t pthid = make_child_without_fork_for_subst(string, fork_flags | FORK_NOTERM, fildes[0], fildes[1]);
     last_asynchronous_pid = old_async_pid;
 
     if (pid == 0) {
@@ -6423,7 +6426,8 @@ error_exit:
         UNBLOCK_SIGNAL (oset);
 
         current_command_subst_pid = pid;
-        last_command_exit_value = wait_for (pid, JWAIT_NOTERM);
+        // last_command_exit_value = wait_for (pid, JWAIT_NOTERM);
+        last_command_exit_value = 0;
         last_command_subst_pid = pid;
         last_made_pid = old_pid;
 

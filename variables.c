@@ -309,7 +309,6 @@ static void propagate_temp_var PARAMS((PTR_T));
 static void dispose_temporary_env PARAMS((sh_free_func_t *));
 
 static inline char *mk_env_string PARAMS((const char *, const char *, int));
-static char **make_env_array_from_var_list PARAMS((SHELL_VAR **));
 static char **make_var_export_array PARAMS((VAR_CONTEXT *));
 static char **make_func_export_array PARAMS((void));
 static void add_temp_array_to_env PARAMS((char **, int, int));
@@ -4815,7 +4814,7 @@ SHELL_VAR *v;
 }
 #endif
 
-static char **
+char **
 make_env_array_from_var_list (vars)
 SHELL_VAR **vars;
 {
@@ -4891,7 +4890,7 @@ SHELL_VAR **vars;
 /* Make an array of assignment statements from the hash table
    HASHED_VARS which contains SHELL_VARs.  Only visible, exported
    variables are eligible. */
-static char **
+char **
 make_var_export_array (vcxt)
 VAR_CONTEXT *vcxt;
 {

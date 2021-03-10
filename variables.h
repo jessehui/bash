@@ -311,6 +311,7 @@ extern SHELL_VAR **all_array_variables PARAMS((void));
 #endif
 extern char **all_variables_matching_prefix PARAMS((const char *));
 
+extern char **make_env_array_from_var_list PARAMS((SHELL_VAR **));
 extern char **make_var_array PARAMS((HASH_TABLE *));
 extern char **add_or_supercede_exported_var PARAMS((char *, int));
 
