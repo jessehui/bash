@@ -281,6 +281,7 @@ extern void list_running_jobs PARAMS((int));
 
 extern pid_t make_child PARAMS((char *, int));
 extern pthread_t make_child_without_fork_for_subst PARAMS((char *, int, int, int));
+extern pthread_t make_child_without_fork_simple_cmd PARAMS((char *, int, int, int, SIMPLE_COM*));
 
 extern int get_tty_state PARAMS((void));
 extern int set_tty_state PARAMS((void));

@@ -1657,7 +1657,7 @@ char *script_name;
         init_interactive_script ();
     }
 
-    filename=full_pathname(filename);
+    filename = full_pathname(filename);
     strncpy(shell_script_dir_path, filename, strlen(filename));
     dirname(shell_script_dir_path);
     free (filename);

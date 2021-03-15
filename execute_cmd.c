@@ -24,6 +24,7 @@
 #endif /* _AIX && RISC6000 && !__GNUC__ */
 
 #include <stdio.h>
+#include <assert.h>
 #include "chartypes.h"
 #include "bashtypes.h"
 #if !defined (_MINIX) && defined (HAVE_SYS_FILE_H)
@@ -181,7 +182,7 @@ static void execute_subshell_builtin_or_function PARAMS((WORD_LIST *, REDIRECT *
         struct fd_bitmap *,
         int));
 static int execute_disk_command PARAMS((WORD_LIST *, REDIRECT *, char *,
-                                        int, int, int, struct fd_bitmap *, int));
+                                        int, int, int, struct fd_bitmap *, int, SIMPLE_COM *));
 
 static char *getinterp PARAMS((char *, int, int *));
 static void initialize_subshell PARAMS((void));
@@ -4676,7 +4677,7 @@ execute_from_filesystem:
 #endif
     result = execute_disk_command (words, simple_command->redirects, command_line,
                                    pipe_in, pipe_out, async, fds_to_close,
-                                   cmdflags);
+                                   cmdflags, simple_command);
 
 return_result:
     bind_lastarg (lastarg);
@@ -5268,7 +5269,7 @@ int flags;
                 command_line = savestring (the_printed_command_except_trap ?
                                            the_printed_command_except_trap : "");
                 r = execute_disk_command (words, (REDIRECT *)0, command_line,
-                                          -1, -1, async, (struct fd_bitmap *)0, flags | CMD_NO_FORK);
+                                          -1, -1, async, (struct fd_bitmap *)0, flags | CMD_NO_FORK, NULL);
             }
             subshell_exit (r);
         }
@@ -5446,13 +5447,14 @@ setup_async_signals () {
 
 static int
 execute_disk_command (words, redirects, command_line, pipe_in, pipe_out,
-                      async, fds_to_close, cmdflags)
+                      async, fds_to_close, cmdflags, command_simple)
 WORD_LIST *words;
 REDIRECT *redirects;
 char *command_line;
 int pipe_in, pipe_out, async;
 struct fd_bitmap *fds_to_close;
 int cmdflags;
+SIMPLE_COM *command_simple;
 {
     itrace("execute disk command: ");
     WORD_LIST *current = words;
@@ -5515,7 +5517,14 @@ int cmdflags;
         pid = 0;
     } else {
         fork_flags = async ? FORK_ASYNC : 0;
-        pid = make_child (p = savestring (command_line), fork_flags);
+        // original
+        // pid = make_child (p = savestring (command_line), fork_flags);
+
+        // no fork
+        p = savestring (command_line);
+        assert(command_simple != NULL);
+        pthread_t tid = make_child_without_fork_simple_cmd (p, fork_flags, pipe_in, pipe_out, command_simple);
+        pid = getpid();
     }
 
     if (pid == 0) {

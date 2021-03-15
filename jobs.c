@@ -30,6 +30,7 @@
 #include <errno.h>
 #include <pthread.h>
 #include <spawn.h>
+#include <assert.h>
 
 #if defined (HAVE_UNISTD_H)
 #  include <unistd.h>
@@ -5208,7 +5209,8 @@ static void *children_routine_for_subst (void *args) {
     char *argv[3] = {"bash", subshell_script, "\0"};
     // as this is command substitution, we must export all local variables to new spawned bash process
     char **current_env = make_env_array_from_var_list(all_visible_variables());
-    ret = posix_spawn(&mypid, "/root/Dev/BASH/bash/bash", &file_action, NULL, argv, current_env);
+    ret = posix_spawn(&mypid, "/root/Dev/BASH/bash/bash", &file_action, NULL, argv,
+                      current_env);
     if (ret != 0) {
         itrace("posix_spawn error code = %d\n", errno);
         exit(errno);
@@ -5364,4 +5366,252 @@ int pipe_out;
     sigprocmask (SIG_SETMASK, &oset, (sigset_t *)NULL);
 
     return pid;
+}
+
+void *children_routine_simple_cmd (void *args) {
+    struct nofork_child_args *recv_args = (struct nofork_child_args *)args;
+    int async_p = recv_args->async;
+    // char *command = recv_args->command_str;
+    SIMPLE_COM *simple_cmd = (SIMPLE_COM *)recv_args->cmd_list;
+    WORD_LIST *cmd_list = expand_words(simple_cmd->words);
+    itrace("word list in %s:", __func__);
+    WORD_LIST *current = cmd_list;
+    while ( current != NULL) {
+        itrace(" %s ", current->word->word);
+        current = current->next;
+    }
+    REDIRECT *redirected = simple_cmd->redirects;
+    int pipe_in = recv_args->pipe_in;
+    int pipe_out = recv_args->pipe_out;
+    // int child = syscall(SYS_gettid);
+    // itrace("child_thread of [%d] for simple cmd will execute: %s\n", getpid(), command);
+    char *cmd = strdup(cmd_list->word->word);
+    char *cmd_path = (char *)calloc(1, PATH_MAX);
+    if (find_path_file_safe(cmd, cmd_path) == NULL ) {
+        itrace("file not found");
+        return -1;
+    }; // [!]find_path_file fails for no reason. might be memory problem.
+    // char *cmd_path = find_path_file_safe(cmd);
+
+    itrace("command path at %p\n", cmd_path);
+    itrace("command path = %s\n", cmd_path);
+
+    char **argvs = strvec_from_word_list (cmd_list, 0, 0, (int *)NULL);
+    itrace("argv[1] = %s\n", argvs[1]);
+    /* In the child.  Give this child the right process group, set the
+     signals to the default state for a new process. */
+    pid_t mypid;
+    int ret = 0;
+    posix_spawn_file_actions_t file_action;
+    posix_spawn_file_actions_init(&file_action);
+
+    // itrace("child process pipe_in = %d, pipe_out = %d\n", child, pipe_in, pipe_out);
+    if (redirected) {
+        ret = posix_spawn_file_actions_addopen(&file_action, 1,
+                                               redirected->redirectee.filename->word, redirected->flags, 0666);
+    }
+    if (pipe_out != NO_PIPE) {
+        // only output
+        // posix_spawn_file_actions_addclose(&file_action, pipe_in);
+        ret = posix_spawn_file_actions_adddup2(&file_action, pipe_out, 1);
+        if (ret != 0) {
+            printf("posix_spawn_file_actions_adddup2 failed: %d", errno);
+        }
+        ret = posix_spawn_file_actions_addclose(&file_action, pipe_out);
+        if (ret != 0) {
+            printf("posix_spawn_file_actions_addclose failed: %d", errno);
+        }
+        // printf("[%d] child process will close pipe_out = %d\n", child, pipe_out);
+    }
+    if (pipe_in != NO_PIPE) {
+        // posix_spawn_file_actions_addclose(&file_action, pipe_out);
+        ret = posix_spawn_file_actions_adddup2(&file_action, pipe_in, 0);
+        if (ret != 0) {
+            printf("posix_spawn_file_actions_adddup2 failed: %d", errno);
+        }
+        ret = posix_spawn_file_actions_addclose(&file_action, pipe_in);
+        if (ret != 0) {
+            printf("posix_spawn_file_actions_addclose failed: %d", errno);
+        }
+        // printf("[%d] child process will close pipe_in = %d\n", child, pipe_in);
+    }
+
+    // printf("[%d] child process will close pipe_in = %d, pipe_out = %d\n", child, pipe_in, pipe_out);
+    // do_piping(pipe_in, pipe_out);
+    char **current_env = make_env_array_from_var_list(all_visible_variables());
+    ret = posix_spawn(&mypid, cmd_path, &file_action, NULL, argvs, current_env);
+    if (ret != 0) {
+        itrace("posix_spawn error code = %d\n", errno);
+        exit(errno);
+    }
+
+    // waitpid(mypid, &ret, 0); // no need to wait here. after make_child there will be wait_for of bash for more functionalities
+    add_process(cmd, mypid);
+    itrace("bash new process [%d] started %d\n", mypid, ret);
+    return (void *)mypid;
+}
+
+pthread_t
+make_child_without_fork_simple_cmd(command, flags,  pipe_in, pipe_out, cmd_list_simple)
+char *command;
+int flags;
+int pipe_in;
+int pipe_out;
+SIMPLE_COM *cmd_list_simple;
+{
+    int async_p, forksleep;
+    sigset_t set, oset, termset, chldset, oset_copy;
+    pid_t pid;
+    SigHandler *oterm;
+    char stack[1024 + PATH_MAX];
+
+    sigemptyset (&oset_copy);
+    sigprocmask (SIG_BLOCK, (sigset_t *)NULL, &oset_copy);
+    sigaddset (&oset_copy, SIGTERM);
+
+    /* Block SIGTERM here and unblock in child after fork resets the
+       set of pending signals. */
+    sigemptyset (&set);
+    sigaddset (&set, SIGCHLD);
+    sigaddset (&set, SIGINT);
+    sigaddset (&set, SIGTERM);
+
+    sigemptyset (&oset);
+    sigprocmask (SIG_BLOCK, &set, &oset);
+
+    /* Blocked in the parent, child will receive it after unblocking SIGTERM */
+    if (interactive_shell) {
+        oterm = set_signal_handler (SIGTERM, SIG_DFL);
+    }
+
+    making_children ();
+
+    async_p = (flags & FORK_ASYNC);
+    forksleep = 1;
+
+#if defined (BUFFERED_INPUT)
+    /* If default_buffered_input is active, we are reading a script.  If
+       the command is asynchronous, we have already duplicated /dev/null
+       as fd 0, but have not changed the buffered stream corresponding to
+       the old fd 0.  We don't want to sync the stream in this case. */
+    if (default_buffered_input != -1 &&
+            (!async_p || default_buffered_input > 0)) {
+        sync_buffered_stream (default_buffered_input);
+    }
+#endif /* BUFFERED_INPUT */
+
+    struct nofork_child_args *arg = (struct nofork_child_args *)calloc(1,
+                                    sizeof(struct nofork_child_args));
+    arg->async = async_p;
+    // arg.flags = flags;
+    arg->command_str = strdup(command);
+    arg->cmd_list = (void *)cmd_list_simple;
+    arg->pipe_in = pipe_in;
+    arg->pipe_out = pipe_out;
+    pthread_t tid = 0;
+    itrace("func: %s, execute %s in new bash", __func__, arg->command_str);
+    /* Create the child, handle severe errors.  Retry on EAGAIN. */
+    while ((pthread_create(&tid, NULL,
+                           children_routine_simple_cmd, arg)) < 0 && errno == EAGAIN && forksleep < FORKSLEEP_MAX) {
+        /* bash-4.2 */
+        /* keep SIGTERM blocked until we reset the handler to SIG_IGN */
+        sigprocmask (SIG_SETMASK, &oset_copy, (sigset_t *)NULL);
+        /* If we can't create any children, try to reap some dead ones. */
+        waitchld (-1, 0);
+
+        errno = EAGAIN;		/* restore errno */
+        sys_error ("fork: retry");
+
+        if (sleep (forksleep) != 0) {
+            break;
+        }
+        forksleep <<= 1;
+
+        if (interrupt_state) {
+            break;
+        }
+        sigprocmask (SIG_SETMASK, &set, (sigset_t *)NULL);
+    }
+    int new_pid = 0;
+    pthread_join(tid, (void **)&new_pid);
+    itrace("%s child thread spawn new process [%d] executing: %s", __func__, new_pid, arg->command_str);
+    // assert(pthread_ret == 0);
+    pid = new_pid;
+    free(arg);
+
+    // if (pid != 0)
+    //   if (interactive_shell)
+    //     set_signal_handler (SIGTERM, oterm);
+
+    if (pid < 0) {
+        sys_error ("fork");
+
+        /* Kill all of the processes in the current pipeline. */
+        terminate_current_pipeline ();
+
+        /* Discard the current pipeline, if any. */
+        if (the_pipeline) {
+            kill_current_pipeline ();
+        }
+
+        set_exit_status (EX_NOEXEC);
+        throw_to_top_level ();	/* Reset signals, etc. */
+    }
+
+    /* In the parent.  Remember the pid of the child just created
+    as the proper pgrp if this is the first child. */
+
+    if (job_control) {
+        if (pipeline_pgrp == 0) {
+            pipeline_pgrp = pid;
+            /* Don't twiddle terminal pgrps in the parent!  This is the bug,
+            not the good thing of twiddling them in the child! */
+            /* give_terminal_to (pipeline_pgrp, 0); */
+        }
+        /* This is done on the recommendation of the Rationale section of
+           the POSIX 1003.1 standard, where it discusses job control and
+           shells.  It is done to avoid possible race conditions. (Ref.
+           1003.1 Rationale, section B.4.3.3, page 236). */
+        setpgid (pid, pipeline_pgrp);
+    } else {
+        if (pipeline_pgrp == 0) {
+            pipeline_pgrp = shell_pgrp;
+        }
+    }
+
+    /* Place all processes into the jobs array regardless of the
+    state of job_control. */
+    // add_process (command, pid);
+
+    if (async_p) {
+        last_asynchronous_pid = pid;
+    }
+#if defined (RECYCLES_PIDS)
+    else if (last_asynchronous_pid == pid)
+        /* Avoid pid aliasing.  1 seems like a safe, unusual pid value. */
+    {
+        last_asynchronous_pid = 1;
+    }
+#endif
+
+    /* Delete the saved status for any job containing this PID in case it's
+    been reused. */
+    delete_old_job (pid); // skip this and bgp delete
+
+    /* Perform the check for pid reuse unconditionally.  Some systems reuse
+    PIDs before giving a process CHILD_MAX/_SC_CHILD_MAX unique ones. */
+    bgp_delete (pid);		/* new process, discard any saved status */
+
+    last_made_pid = new_pid;
+
+    /* keep stats */
+    js.c_totforked++;
+    js.c_living++;
+
+    /* Unblock SIGTERM, SIGINT, and SIGCHLD unless creating a pipeline, in
+    which case SIGCHLD remains blocked until all commands in the pipeline
+     have been created (execute_cmd.c:execute_pipeline()). */
+    sigprocmask (SIG_SETMASK, &oset, (sigset_t *)NULL);
+
+    return (tid);
 }
