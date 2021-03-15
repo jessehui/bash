@@ -13,3 +13,6 @@ ll /root/output.txt
 # else
 #     echo "successfully catch return value"
 # fi
+
+TEST=$(busybox echo "what")
+busybox echo $TEST

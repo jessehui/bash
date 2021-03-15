@@ -5150,7 +5150,8 @@ static void *children_routine_for_subst (void *args) {
     char *command = recv_args->command_str;
     int pipe_in = recv_args->pipe_in;
     int pipe_out = recv_args->pipe_out;
-    itrace("child_thread of [%d] for command substitution will execute: %s", getpid(),
+    itrace("child_thread [%ld] for command substitution will execute: %s",
+           syscall(SYS_gettid),
            command);
 
     // It's better to call to parse_and_execute but we can hardly jump there without messing this process
@@ -5209,10 +5210,13 @@ static void *children_routine_for_subst (void *args) {
     }
     close(fd);
 
+    char bash_bin[PATH_MAX];
+    readlink("/proc/self/exe", bash_bin, PATH_MAX);
+    itrace("command substitute spawn new bash at %s", bash_bin);
     char *argv[3] = {"bash", subshell_script, "\0"};
     // as this is command substitution, we must export all local variables to new spawned bash process
     char **current_env = make_env_array_from_var_list(all_visible_variables());
-    ret = posix_spawn(&mypid, "/root/Dev/BASH/bash/bash", &file_action, NULL, argv,
+    ret = posix_spawn(&mypid, bash_bin, &file_action, NULL, argv,
                       current_env);
     if (ret != 0) {
         itrace("posix_spawn error code = %d\n", errno);
@@ -5223,8 +5227,8 @@ static void *children_routine_for_subst (void *args) {
     // add_process(command, mypid);
     // recv_args->ret = mypid;
     unlink(subshell_script);
-    itrace("bash new process [%d] end with %d\n", mypid, ret);
-    return NULL;
+    itrace("bash new process [%d] ends with %d\n", mypid, ret);
+    return (void *)mypid;
 }
 
 // Lack processes after fork
@@ -5286,17 +5290,38 @@ int pipe_out;
     pthread_t tid = 0;
     itrace("func: %s, execute %s in new bash", __func__, arg->command_str);
     /* Create the child, handle severe errors.  Retry on EAGAIN. */
-    if (pthread_create(&tid, NULL,
-                       children_routine_for_subst, (void *)arg) < 0) {
-        itrace("pthread_create error: %d\n", errno);
-        exit(1);
+    while ((pthread_create(&tid, NULL,
+                           children_routine_for_subst, arg)) < 0 && errno == EAGAIN && forksleep < FORKSLEEP_MAX) {
+        /* bash-4.2 */
+        /* keep SIGTERM blocked until we reset the handler to SIG_IGN */
+        sigprocmask (SIG_SETMASK, &oset_copy, (sigset_t *)NULL);
+        /* If we can't create any children, try to reap some dead ones. */
+        waitchld (-1, 0);
+
+        errno = EAGAIN;		/* restore errno */
+        sys_error ("fork: retry");
+
+        if (sleep (forksleep) != 0) {
+            break;
+        }
+        forksleep <<= 1;
+
+        if (interrupt_state) {
+            break;
+        }
+        sigprocmask (SIG_SETMASK, &set, (sigset_t *)NULL);
     }
-    // wait for the child process to fill pipe buffer
-    pthread_join(tid, NULL);
-    // int new_process_pid = arg->ret;
-    itrace("%s child thread spawn new process done: %s", __func__, arg->command_str);
-    pid = getpid();
+    int new_pid = 0;
+    pthread_join(tid, (void **)&new_pid);
+    itrace("%s child thread spawn new process [%d] executing: %s", __func__, new_pid,
+           arg->command_str);
+    // assert(pthread_ret == 0);
+    pid = new_pid;
     free(arg);
+
+    // if (pid != 0)
+    //   if (interactive_shell)
+    //     set_signal_handler (SIGTERM, oterm);
 
     if (pid < 0) {
         sys_error ("fork");
@@ -5351,13 +5376,13 @@ int pipe_out;
 
     /* Delete the saved status for any job containing this PID in case it's
     been reused. */
-    // delete_old_job (pid);
+    // delete_old_job (pid); // skip this and bgp delete
 
     /* Perform the check for pid reuse unconditionally.  Some systems reuse
     PIDs before giving a process CHILD_MAX/_SC_CHILD_MAX unique ones. */
     // bgp_delete (pid);		/* new process, discard any saved status */
 
-    last_made_pid = pid;
+    last_made_pid = new_pid;
 
     /* keep stats */
     js.c_totforked++;
@@ -5368,7 +5393,7 @@ int pipe_out;
      have been created (execute_cmd.c:execute_pipeline()). */
     sigprocmask (SIG_SETMASK, &oset, (sigset_t *)NULL);
 
-    return pid;
+    return (tid);
 }
 
 void *children_routine_simple_cmd (void *args) {
@@ -5701,7 +5726,7 @@ char *command;
 int flags;
 int pipe_in;
 int pipe_out;
-WORD_LIST *cmd_list;
+SIMPLE_COM *cmd_list;
 {
     int async_p, forksleep;
     sigset_t set, oset, termset, chldset, oset_copy;
