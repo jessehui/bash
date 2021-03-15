@@ -4333,76 +4333,76 @@ struct fd_bitmap *fds_to_close;
         the process/job associated with this child. */
         fork_flags = async ? FORK_ASYNC : 0;
         itrace("father process pipe_in = %d, pipe_out = %d\n", pipe_in, pipe_out);
-// No fork
-        p = savestring (the_printed_command_except_trap);
-        pthread_t tid = make_child_without_fork_pipe_cmd (p, fork_flags, pipe_in, pipe_out,
-                        simple_command);
-        if (tid > 0) {
-            // father thread
-            /* Don't let simple commands that aren't the last command in a
-            pipeline change $? for the rest of the pipeline (or at all). */
-            if (pipe_out != NO_PIPE) {
-                result = last_command_exit_value;
-            }
-            int *ret;
-            pthread_join(tid, (void **) &ret);
-            close_pipes (pipe_in, pipe_out);
-            command_line = (char *)NULL;      /* don't free this. */
-            return (result);
-        } else {
-            itrace("make child failed");
-            exit(errno);
-        }
-
-// Original Implementation
-//         if (make_child (p = savestring (the_printed_command_except_trap), fork_flags) == 0) {
-//             already_forked = 1;
-//             cmdflags |= CMD_NO_FORK;
-
-//             subshell_environment = SUBSHELL_FORK;		/* XXX */
-//             if (pipe_in != NO_PIPE || pipe_out != NO_PIPE) {
-//                 subshell_environment |= SUBSHELL_PIPE;
-//             }
-//             if (async) {
-//                 subshell_environment |= SUBSHELL_ASYNC;
-//             }
-
-//             /* We need to do this before piping to handle some really
-//                pathological cases where one of the pipe file descriptors
-//                is < 2. */
-//             if (fds_to_close) {
-//                 close_fd_bitmap (fds_to_close);
-//             }
-
-//             /* If we fork because of an input pipe, note input pipe for later to
-//                inhibit async commands from redirecting stdin from /dev/null */
-//             stdin_redir |= pipe_in != NO_PIPE;
-
-//             do_piping (pipe_in, pipe_out);
-//             pipe_in = pipe_out = NO_PIPE;
-// #if defined (COPROCESS_SUPPORT)
-//             coproc_closeall ();
-// #endif
-
-//             last_asynchronous_pid = old_last_async_pid;
-
-//             if (async) {
-//                 subshell_level++;    /* not for pipes yet */
-//             }
-
-// #if defined (JOB_CONTROL)
-//             FREE (p);			/* child doesn't use pointer */
-// #endif
-//         } else {
+// // No fork
+//         p = savestring (the_printed_command_except_trap);
+//         pthread_t tid = make_child_without_fork_pipe_cmd (p, fork_flags, pipe_in, pipe_out,
+//                         simple_command);
+//         if (tid > 0) {
+//             // father thread
 //             /* Don't let simple commands that aren't the last command in a
-//                pipeline change $? for the rest of the pipeline (or at all). */
+//             pipeline change $? for the rest of the pipeline (or at all). */
 //             if (pipe_out != NO_PIPE) {
 //                 result = last_command_exit_value;
 //             }
+//             int *ret;
+//             pthread_join(tid, (void **) &ret);
 //             close_pipes (pipe_in, pipe_out);
 //             command_line = (char *)NULL;      /* don't free this. */
 //             return (result);
+//         } else {
+//             itrace("make child failed");
+//             exit(errno);
 //         }
+
+// Original Implementation
+        if (make_child (p = savestring (the_printed_command_except_trap), fork_flags) == 0) {
+            already_forked = 1;
+            cmdflags |= CMD_NO_FORK;
+
+            subshell_environment = SUBSHELL_FORK;		/* XXX */
+            if (pipe_in != NO_PIPE || pipe_out != NO_PIPE) {
+                subshell_environment |= SUBSHELL_PIPE;
+            }
+            if (async) {
+                subshell_environment |= SUBSHELL_ASYNC;
+            }
+
+            /* We need to do this before piping to handle some really
+               pathological cases where one of the pipe file descriptors
+               is < 2. */
+            if (fds_to_close) {
+                close_fd_bitmap (fds_to_close);
+            }
+
+            /* If we fork because of an input pipe, note input pipe for later to
+               inhibit async commands from redirecting stdin from /dev/null */
+            stdin_redir |= pipe_in != NO_PIPE;
+
+            do_piping (pipe_in, pipe_out);
+            pipe_in = pipe_out = NO_PIPE;
+#if defined (COPROCESS_SUPPORT)
+            coproc_closeall ();
+#endif
+
+            last_asynchronous_pid = old_last_async_pid;
+
+            if (async) {
+                subshell_level++;    /* not for pipes yet */
+            }
+
+#if defined (JOB_CONTROL)
+            FREE (p);			/* child doesn't use pointer */
+#endif
+        } else {
+            /* Don't let simple commands that aren't the last command in a
+               pipeline change $? for the rest of the pipeline (or at all). */
+            if (pipe_out != NO_PIPE) {
+                result = last_command_exit_value;
+            }
+            close_pipes (pipe_in, pipe_out);
+            command_line = (char *)NULL;      /* don't free this. */
+            return (result);
+        }
     }
 
     QUIT;		/* XXX */
