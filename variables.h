@@ -384,6 +384,7 @@ extern void put_gnu_argv_flags_into_env PARAMS((intmax_t, char *));
 
 extern void print_var_list PARAMS((SHELL_VAR **));
 extern void print_func_list PARAMS((SHELL_VAR **));
+extern void print_func_list_to_file PARAMS((SHELL_VAR **, int));
 extern void print_assignment PARAMS((SHELL_VAR *));
 extern void print_var_value PARAMS((SHELL_VAR *, int));
 extern void print_var_function PARAMS((SHELL_VAR *));

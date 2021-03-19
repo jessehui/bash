@@ -1037,6 +1037,32 @@ register SHELL_VAR **list;
     }
 }
 
+void
+print_func_list_to_file (list, fd)
+register SHELL_VAR **list;
+int fd;
+{
+    register int i;
+    register SHELL_VAR *var;
+
+    int saved_stdout = dup(STDOUT_FILENO);
+    if (dup2(fd, STDOUT_FILENO) == -1) {
+        perror("dup2 failed"); 
+        exit(1);
+    }
+
+    for (i = 0; list && (var = list[i]); i++) {
+        printf ("%s ", var->name);
+        print_var_function (var);
+        printf ("\n");
+    }
+
+    // restore stdout
+    dup2(saved_stdout, STDOUT_FILENO);
+    fflush(stdout);
+    close(saved_stdout);
+}
+
 /* Print the value of a single SHELL_VAR.  No newline is
    output, but the variable is printed in such a way that
    it can be read back in. */

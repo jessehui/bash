@@ -5554,10 +5554,14 @@ SIMPLE_COM *command_simple;
 
         // no fork
         p = savestring (command_line);
+        WORD_LIST *tmp = command_simple->words;
+        command_simple->words = words; // update the WORD_LIST to expanded ones
         assert(command_simple != NULL);
         pthread_t tid = make_child_without_fork_simple_cmd (p, fork_flags, pipe_in, pipe_out,
                         command_simple);
         pid = getpid();
+        // restore the original command_simple, otherwise segment fault
+        command_simple->words = tmp;
     }
 
     if (pid == 0) {

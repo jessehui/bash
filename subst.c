@@ -5823,7 +5823,13 @@ int open_for_read_in_child;
     save_pipeline (1);
 #endif /* JOB_CONTROL */
 
-    pid = make_child ((char *)NULL, FORK_ASYNC);
+    // if original
+    // pid = make_child ((char *)NULL, FORK_ASYNC);
+    // else no-fork
+    pid = getpid();
+    pthread_t pthid = make_child_without_fork_for_process_subst(string, FORK_ASYNC,
+                         parent_pipe_fd, child_pipe_fd, open_for_read_in_child);
+
     if (pid == 0) {
 #if 0
         int old_interactive;
@@ -5883,13 +5889,13 @@ int open_for_read_in_child;
     }
 
     if (pid > 0) {
-#if defined (JOB_CONTROL)
-        last_procsub_child = restore_pipeline (0);
-        /* We assume that last_procsub_child->next == last_procsub_child because
-        of how jobs.c:add_process() works. */
-        last_procsub_child->next = 0;
-        procsub_add (last_procsub_child);
-#endif
+// #if defined (JOB_CONTROL)
+//         last_procsub_child = restore_pipeline (0);
+//         /* We assume that last_procsub_child->next == last_procsub_child because
+//         of how jobs.c:add_process() works. */
+//         last_procsub_child->next = 0;
+//         procsub_add (last_procsub_child);
+// #endif
 
 #if defined (HAVE_DEV_FD)
         dev_fd_list[parent_pipe_fd] = pid;
