@@ -698,7 +698,7 @@ struct fd_bitmap *fds_to_close;
             invert = (command->flags & CMD_INVERT_RETURN) != 0;
             ignore_return = (command->flags & CMD_IGNORE_RETURN) != 0;
 
-            exec_result = wait_for (paren_pid, 0);
+            // exec_result = wait_for (paren_pid, 0); // don't need to wait for subshell of child process
 
             /* If we have to, invert the return value. */
             if (invert)
@@ -4352,8 +4352,6 @@ struct fd_bitmap *fds_to_close;
             if (pipe_out != NO_PIPE) {
                 result = last_command_exit_value;
             }
-            // int *ret;
-            // pthread_join(tid, (void **) &ret);
             close_pipes (pipe_in, pipe_out);
             command_line = (char *)NULL;      /* don't free this. */
             return (result);

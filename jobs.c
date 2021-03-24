@@ -2929,6 +2929,11 @@ wait_for (pid, flags)
 pid_t pid;
 int flags;
 {
+    // To handle child thread error before posix_spawn
+    if (pid == -1) {
+        return -1;
+    }
+
     itrace("wait for child [%d] to exit", pid);
     int job, termination_state, r;
     WAIT s;
@@ -5426,6 +5431,7 @@ void *children_routine_simple_cmd (void *args) {
     char *cmd_path = (char *)calloc(1, PATH_MAX);
     if (find_path_file_safe(cmd, cmd_path) == NULL ) {
         itrace("file not found");
+        add_process(cmd, -1);
         return (void *)-1;
     }; // [!]find_path_file fails for no reason. might be memory problem.
     // char *cmd_path = find_path_file_safe(cmd);
@@ -5447,7 +5453,7 @@ void *children_routine_simple_cmd (void *args) {
 
     if (redirected) {
         // char *redirectee_word = redirection_expand(redirected->redirectee.filename);
-        if (redirected->redirectee.dest < 4) {
+        if (0 <= redirected->redirectee.dest && redirected->redirectee.dest < 4) {
             // echo xxx 2>&1 (dup2(1, 2) redirects stderror to stdout)
             ret = posix_spawn_file_actions_adddup2(&file_action, redirected->redirectee.dest, redirected->redirector.dest);
             if (redirected->next != NULL) {
@@ -5461,6 +5467,7 @@ void *children_routine_simple_cmd (void *args) {
                                                redirected->redirectee.filename->word, redirected->flags, 0666);
             if (redirected->next != NULL) {
                 // echo xxx > a.log 2>&1
+                // printf("redirected->next->redirectee.filename.word = %s\n", redirected->next->redirectee.filename->word);
                 // redirectee_word = redirection_expand(redirected->next->redirectee.filename);
                 assert(redirected->next->redirectee.dest < 4);
                 ret = posix_spawn_file_actions_adddup2(&file_action, redirected->next->redirectee.dest, redirected->next->redirector.dest);
@@ -5499,8 +5506,8 @@ void *children_routine_simple_cmd (void *args) {
     making_children();
     ret = posix_spawn(&mypid, cmd_path, &file_action, NULL, argvs, current_env);
     if (ret != 0) {
-        itrace("posix_spawn error code = %d\n", errno);
-        exit(errno);
+        sys_error ("posix_spawn error code = %d\n", errno);
+        return (void *)(0 - errno);
     }
 
     // waitpid(mypid, &ret, 0); // no need to wait here. after make_child there will be wait_for of bash for more functionalities
@@ -5603,8 +5610,8 @@ SIMPLE_COM *cmd_list_simple;
     //   if (interactive_shell)
     //     set_signal_handler (SIGTERM, oterm);
 
-    if (pid < 0) {
-        sys_error ("fork");
+    if (pid < 0 && pid != -1) { // 
+        sys_error ("posix_spawn");
 
         /* Kill all of the processes in the current pipeline. */
         terminate_current_pipeline ();
@@ -5683,7 +5690,7 @@ void *children_routine_for_pipe_cmd (void *args) {
     char *command = recv_args->command_str;
     itrace("thread id = %d, word list in %s:", syscall(SYS_gettid), __func__);
     SIMPLE_COM *simple_cmd = (SIMPLE_COM *)recv_args->cmd_list;
-    WORD_LIST *cmd_list = expand_words(simple_cmd->words);
+    WORD_LIST *cmd_list = expand_words(simple_cmd->words); // This looks like the only difference with children_routine_simple_cmd
     WORD_LIST *current = cmd_list;
     while ( current != NULL) {
         itrace(" %s ", current->word->word);
@@ -5714,7 +5721,7 @@ void *children_routine_for_pipe_cmd (void *args) {
     int ret = 0;
     if (redirected) {
         // char *redirectee_word = redirection_expand(redirected->redirectee.filename);
-        if (redirected->redirectee.dest < 4) {
+        if (0 <= redirected->redirectee.dest && redirected->redirectee.dest < 4) {
             // echo xxx 2>&1 (dup2(1, 2) redirects stderror to stdout)
             ret = posix_spawn_file_actions_adddup2(&file_action, redirected->redirectee.dest, redirected->redirector.dest);
             if (redirected->next != NULL) {
@@ -5724,10 +5731,12 @@ void *children_routine_for_pipe_cmd (void *args) {
             }
         } else {
             // echo xxx > a.log
+            itrace("redirected: %s", redirected->redirectee.filename->word);
             ret = posix_spawn_file_actions_addopen(&file_action, 1,
                                                redirected->redirectee.filename->word, redirected->flags, 0666);
             if (redirected->next != NULL) {
                 // echo xxx > a.log 2>&1
+                // printf("redirected->next->redirectee.filename.word = %s\n", redirected->next->redirectee.filename->word);
                 // redirectee_word = redirection_expand(redirected->next->redirectee.filename);
                 assert(redirected->next->redirectee.dest < 4);
                 ret = posix_spawn_file_actions_adddup2(&file_action, redirected->next->redirectee.dest, redirected->next->redirector.dest);
@@ -5765,6 +5774,7 @@ void *children_routine_for_pipe_cmd (void *args) {
         exit(errno);
     }
     add_process(cmd, mypid);
+    // waitpid(mypid, &ret, 0);
     itrace("bash new process [%d] started %d\n", mypid, ret);
     return (void *)mypid;
 }
