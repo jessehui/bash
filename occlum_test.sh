@@ -1,14 +1,28 @@
 # Exit when error
- set -e
+set -e
+
+busybox diff <(cat /root/a.log) <(cat /root/b.log)
+exit 3
+
+# Test unrecognized commands
+fake_inst || true
+
+# Test background process (process group/send signal to front process is not supported)
+https_server=simplest_web_server_ssl
+cd /root/demos/https_server/
+./$https_server &
+pid=$!
+curl -k https://127.0.0.1:8443
+kill $pid
+curl -k https://127.0.0.1:8443 || true
+
+cd -
 
 # Test pipe
 busybox echo -e "Hello-world-from-bash\n test" | busybox awk '$1=$1' FS="-" OFS=" " > /root/output.txt
 busybox cat /root/output.txt
 rm /root/output.txt
 busybox ls -l /root/output.txt || true
-
-# Test unrecognized commands
-#fake_inst || true
 
 # Test command substitution
 TMP=/usr/bin/test
@@ -70,6 +84,21 @@ busybox ls . *.blah > log 2>&1 || true
 busybox echo "start log:"
 busybox cat log
 busybox rm log
+
+# Test Occlum
+cd ~
+rm -rf occlum_instance
+occlum new occlum_instance
+cp demos/hello_c/hello_world occlum_instance/image/bin
+cd occlum_instance
+SGX_MODE=SIM occlum build
+occlum run /bin/hello_world
+occlum build
+occlum run /bin/hello_world
+occlum build --sgx-mode SIM
+occlum run /bin/hello_world
+
+/root/Dev/SPARK/spark-3.1.1-bin-hadoop2.7/bin/spark-submit /root/Dev/SPARK/spark-3.1.1-bin-hadoop2.7/examples/src/main/python/pi.py
 
 echo "TESTS successful"
 

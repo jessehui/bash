@@ -286,7 +286,8 @@ extern pthread_t make_child_without_fork_simple_cmd PARAMS((char *, int, int, in
 extern pthread_t make_child_without_fork_pipe_cmd PARAMS((char *, int, int, int,
         SIMPLE_COM *));
 extern pthread_t make_child_without_fork_for_subshell PARAMS((char *, int, int, int));
-extern pthread_t make_child_without_fork_for_process_subst PARAMS((char *, int, int, int, int));
+extern pthread_t make_child_without_fork_for_process_subst PARAMS((char *, int, int, int,
+        int));
 
 extern int get_tty_state PARAMS((void));
 extern int set_tty_state PARAMS((void));

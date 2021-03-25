@@ -5828,7 +5828,7 @@ int open_for_read_in_child;
     // else no-fork
     pid = getpid();
     pthread_t pthid = make_child_without_fork_for_process_subst(string, FORK_ASYNC,
-                         parent_pipe_fd, child_pipe_fd, open_for_read_in_child);
+                      parent_pipe_fd, child_pipe_fd, open_for_read_in_child);
 
     if (pid == 0) {
 #if 0

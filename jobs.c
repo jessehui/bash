@@ -33,6 +33,7 @@
 #include <assert.h>
 // #include <unistd.h>
 #include <sys/syscall.h>
+#include <stdarg.h>
 
 #if defined (HAVE_UNISTD_H)
 #  include <unistd.h>
@@ -3774,6 +3775,35 @@ int sig;
     SIGRETURN (n);
 }
 
+void printSignalSet(sigset_t *set) {
+    /* This listing of signals may be incomplete. */
+    const int sigList[] = { SIGHUP, SIGINT, SIGQUIT, SIGILL,
+                            SIGABRT, SIGFPE, SIGKILL, SIGSEGV,
+                            SIGPIPE, SIGALRM, SIGTERM, SIGUSR1,
+                            SIGUSR2, SIGCHLD, SIGCONT, SIGSTOP,
+                            SIGTSTP, SIGTTIN, SIGTTOU
+                          };
+    const char *sigNames[] = { "SIGHUP", "SIGINT", "SIGQUIT", "SIGILL",
+                               "SIGABRT", "SIGFPE", "SIGKILL", "SIGSEGV",
+                               "SIGPIPE", "SIGALRM", "SIGTERM", "SIGUSR1",
+                               "SIGUSR2", "SIGCHLD", "SIGCONT", "SIGSTOP",
+                               "SIGTSTP", "SIGTTIN", "SIGTTOU"
+                             };
+    const int sigLen = 19;
+
+    for (int i = 0; i < sigLen; i++) {
+        int ret = sigismember(set, sigList[i]);
+        if (ret == -1) {
+            perror("sigismember:");
+            exit(EXIT_FAILURE);
+        } else if (ret == 1) {
+            printf("Signal %s=%d IS in the set.\n", sigNames[i], sigList[i]);
+        } else {
+            printf("Signal %s=%d is not in the set.\n", sigNames[i], sigList[i]);
+        }
+    }
+}
+
 /* waitchld() reaps dead or stopped children.  It's called by wait_for and
    sigchld_handler, and runs until there aren't any children terminating any
    more.
@@ -3816,7 +3846,14 @@ int block;
             internal_warning (_("waitchld: turning on WNOHANG to avoid indefinite block"));
             waitpid_flags |= WNOHANG;
         }
-
+        // sigset_t set;
+        // if(sigprocmask(0, NULL, &set) != 0)
+        // {
+        //     perror("sigprocmask:");
+        //     exit(EXIT_FAILURE);
+        // }
+        // printf("--- signal mask for this process: ---\n");
+        // printSignalSet(&set);
         pid = WAITPID (-1, &status, waitpid_flags);
 
 #if 0
@@ -5152,9 +5189,9 @@ static const char tmp_file_template[] = ".script.lock.XXXXXX";
 extern char *find_path_file_safe PARAMS((const char *, char *));
 extern char *redirection_expand PARAMS((WORD_DESC *));
 #define ARG_MAX 131072 // based on limits.h
-// extern char **make_env_array_from_var_list PARAMS((SHELL_VAR **));
-static void *children_routine_for_subst (void *args) {
-    struct nofork_child_args *recv_args = (struct nofork_child_args *)args;
+
+static int children_routine_for_subst (struct nofork_child_args *recv_args) {
+    // struct nofork_child_args *recv_args = (struct nofork_child_args *)args;
     char *command = recv_args->command_str;
     int pipe_in = recv_args->pipe_in;
     int pipe_out = recv_args->pipe_out;
@@ -5174,7 +5211,7 @@ static void *children_routine_for_subst (void *args) {
         printf("posix_spawn_file_actions_adddup2 failed: %d", errno);
     }
 
-    // copy from subst.c:6430
+    // derived from subst.c:6430
     /* If standard output is closed in the parent shell
      (such as after `exec >&-'), file descriptor 1 will be
      the lowest available file descriptor, and end up in
@@ -5211,7 +5248,7 @@ static void *children_routine_for_subst (void *args) {
         itrace("create tmp file %s failed\n", subshell_script);
         exit(1);
     }
-    SHELL_VAR ** shell_functions = all_visible_functions();
+    SHELL_VAR **shell_functions = all_visible_functions();
     if (shell_functions != NULL) {
         print_func_list_to_file(shell_functions, fd);
     }
@@ -5222,16 +5259,19 @@ static void *children_routine_for_subst (void *args) {
     }
     close(fd);
 
-    char bash_bin[PATH_MAX];
+    char bash_bin[PATH_MAX] = {0};
     readlink("/proc/self/exe", bash_bin, PATH_MAX);
     itrace("command substitute spawn new bash at %s", bash_bin);
-    char *argv[3] = {"bash", subshell_script, "\0"};
+    char *argv[] = {"bash", subshell_script, NULL};
+
     // as this is command substitution, we must export all local variables to new spawned bash process
     char **current_env = make_env_array_from_var_list(all_visible_variables());
+    // char **argv = make_argv(2, "bash", subshell_script);
     ret = posix_spawn(&mypid, bash_bin, &file_action, NULL, argv,
                       current_env);
     if (ret != 0) {
         itrace("posix_spawn error code = %d\n", errno);
+        // unlink(subshell_script);
         exit(errno);
     }
 
@@ -5240,7 +5280,8 @@ static void *children_routine_for_subst (void *args) {
     // recv_args->ret = mypid;
     unlink(subshell_script);
     itrace("bash new process [%d] ends with %d\n", mypid, ret);
-    return (void *)mypid;
+    posix_spawn_file_actions_destroy(&file_action);
+    return mypid;
 }
 
 // Lack processes after fork
@@ -5302,38 +5343,12 @@ int pipe_out;
     pthread_t tid = 0;
     itrace("func: %s, execute %s in new bash", __func__, arg->command_str);
     /* Create the child, handle severe errors.  Retry on EAGAIN. */
-    while ((pthread_create(&tid, NULL,
-                           children_routine_for_subst, arg)) < 0 && errno == EAGAIN && forksleep < FORKSLEEP_MAX) {
-        /* bash-4.2 */
-        /* keep SIGTERM blocked until we reset the handler to SIG_IGN */
-        sigprocmask (SIG_SETMASK, &oset_copy, (sigset_t *)NULL);
-        /* If we can't create any children, try to reap some dead ones. */
-        waitchld (-1, 0);
-
-        errno = EAGAIN;		/* restore errno */
-        sys_error ("fork: retry");
-
-        if (sleep (forksleep) != 0) {
-            break;
-        }
-        forksleep <<= 1;
-
-        if (interrupt_state) {
-            break;
-        }
-        sigprocmask (SIG_SETMASK, &set, (sigset_t *)NULL);
-    }
-    int new_pid = 0;
-    pthread_join(tid, (void **)&new_pid);
+    int new_pid = children_routine_for_subst(arg);
+    // pthread_join(tid, (void **)&new_pid);
     itrace("%s child thread spawn new process [%d] executing: %s", __func__, new_pid,
            arg->command_str);
-    // assert(pthread_ret == 0);
     pid = new_pid;
     free(arg);
-
-    // if (pid != 0)
-    //   if (interactive_shell)
-    //     set_signal_handler (SIGTERM, oterm);
 
     if (pid < 0) {
         sys_error ("fork");
@@ -5371,28 +5386,9 @@ int pipe_out;
         }
     }
 
-    /* Place all processes into the jobs array regardless of the
-    state of job_control. */
-    // add_process (command, pid);
-
     if (async_p) {
         last_asynchronous_pid = pid;
     }
-#if defined (RECYCLES_PIDS)
-    else if (last_asynchronous_pid == pid)
-        /* Avoid pid aliasing.  1 seems like a safe, unusual pid value. */
-    {
-        last_asynchronous_pid = 1;
-    }
-#endif
-
-    /* Delete the saved status for any job containing this PID in case it's
-    been reused. */
-    // delete_old_job (pid); // skip this and bgp delete
-
-    /* Perform the check for pid reuse unconditionally.  Some systems reuse
-    PIDs before giving a process CHILD_MAX/_SC_CHILD_MAX unique ones. */
-    // bgp_delete (pid);		/* new process, discard any saved status */
 
     last_made_pid = new_pid;
 
@@ -5405,11 +5401,68 @@ int pipe_out;
      have been created (execute_cmd.c:execute_pipeline()). */
     sigprocmask (SIG_SETMASK, &oset, (sigset_t *)NULL);
 
-    return (tid);
+    return (new_pid);
 }
 
-void *children_routine_simple_cmd (void *args) {
-    struct nofork_child_args *recv_args = (struct nofork_child_args *)args;
+static int set_child_process_file_actions(posix_spawn_file_actions_t *file_action,
+        REDIRECT *redirected, int pipe_in, int pipe_out) {
+    int ret = 0;
+    if (redirected) {
+        // char *redirectee_word = redirection_expand(redirected->redirectee.filename);
+        if (0 <= redirected->redirectee.dest && redirected->redirectee.dest < 4) {
+            // echo xxx 2>&1 (dup2(1, 2) redirects stderror to stdout)
+            ret = posix_spawn_file_actions_adddup2(file_action, redirected->redirectee.dest,
+                                                   redirected->redirector.dest);
+            if (redirected->next != NULL) {
+                // echo xxx 2>&1 > a.log
+                ret = posix_spawn_file_actions_addopen(file_action,
+                                                       (size_t)redirected->redirectee.filename,
+                                                       redirected->next->redirectee.filename->word, redirected->next->flags, 0666);
+            }
+        } else {
+            // echo xxx > a.log
+            ret = posix_spawn_file_actions_addopen(file_action, 1,
+                                                   redirected->redirectee.filename->word, redirected->flags, 0666);
+            if (redirected->next != NULL) {
+                // echo xxx > a.log 2>&1
+                // printf("redirected->next->redirectee.filename.word = %s\n", redirected->next->redirectee.filename->word);
+                // redirectee_word = redirection_expand(redirected->next->redirectee.filename);
+                assert(redirected->next->redirectee.dest < 4);
+                ret = posix_spawn_file_actions_adddup2(file_action, redirected->next->redirectee.dest,
+                                                       redirected->next->redirector.dest);
+            }
+        }
+    }
+    if (pipe_out != NO_PIPE) {
+        // only output
+        // posix_spawn_file_actions_addclose(&file_action, pipe_in);
+        ret = posix_spawn_file_actions_adddup2(file_action, pipe_out, 1);
+        if (ret != 0) {
+            printf("posix_spawn_file_actions_adddup2 failed: %d", errno);
+        }
+        ret = posix_spawn_file_actions_addclose(file_action, pipe_out);
+        if (ret != 0) {
+            printf("posix_spawn_file_actions_addclose failed: %d", errno);
+        }
+        // printf("[%d] child process will close pipe_out = %d\n", child, pipe_out);
+    }
+    if (pipe_in != NO_PIPE) {
+        // posix_spawn_file_actions_addclose(&file_action, pipe_out);
+        ret = posix_spawn_file_actions_adddup2(file_action, pipe_in, 0);
+        if (ret != 0) {
+            printf("posix_spawn_file_actions_adddup2 failed: %d", errno);
+        }
+        ret = posix_spawn_file_actions_addclose(file_action, pipe_in);
+        if (ret != 0) {
+            printf("posix_spawn_file_actions_addclose failed: %d", errno);
+        }
+        // printf("[%d] child process will close pipe_in = %d\n", child, pipe_in);
+    }
+    return ret;
+}
+
+static int children_routine_simple_cmd (struct nofork_child_args *recv_args) {
+    // struct nofork_child_args *recv_args = (struct nofork_child_args *)args;
     int async_p = recv_args->async;
     // char *command = recv_args->command_str;
     SIMPLE_COM *simple_cmd = (SIMPLE_COM *)recv_args->cmd_list;
@@ -5432,7 +5485,7 @@ void *children_routine_simple_cmd (void *args) {
     if (find_path_file_safe(cmd, cmd_path) == NULL ) {
         itrace("file not found");
         add_process(cmd, -1);
-        return (void *)-1;
+        return -1;
     }; // [!]find_path_file fails for no reason. might be memory problem.
     // char *cmd_path = find_path_file_safe(cmd);
 
@@ -5451,70 +5504,34 @@ void *children_routine_simple_cmd (void *args) {
     // echo xxx 2>&1 > a.log needs:
     // dup2(1,2), open(a.log) = 3, dup2(3,1)
 
-    if (redirected) {
-        // char *redirectee_word = redirection_expand(redirected->redirectee.filename);
-        if (0 <= redirected->redirectee.dest && redirected->redirectee.dest < 4) {
-            // echo xxx 2>&1 (dup2(1, 2) redirects stderror to stdout)
-            ret = posix_spawn_file_actions_adddup2(&file_action, redirected->redirectee.dest, redirected->redirector.dest);
-            if (redirected->next != NULL) {
-                // echo xxx 2>&1 > a.log
-                ret = posix_spawn_file_actions_addopen(&file_action, (size_t)redirected->redirectee.filename,
-                                            redirected->next->redirectee.filename->word, redirected->next->flags, 0666);
-            }
-        } else {
-            // echo xxx > a.log
-            ret = posix_spawn_file_actions_addopen(&file_action, 1,
-                                               redirected->redirectee.filename->word, redirected->flags, 0666);
-            if (redirected->next != NULL) {
-                // echo xxx > a.log 2>&1
-                // printf("redirected->next->redirectee.filename.word = %s\n", redirected->next->redirectee.filename->word);
-                // redirectee_word = redirection_expand(redirected->next->redirectee.filename);
-                assert(redirected->next->redirectee.dest < 4);
-                ret = posix_spawn_file_actions_adddup2(&file_action, redirected->next->redirectee.dest, redirected->next->redirector.dest);
-            }
-        }
-    }
-    if (pipe_out != NO_PIPE) {
-        // only output
-        // posix_spawn_file_actions_addclose(&file_action, pipe_in);
-        ret = posix_spawn_file_actions_adddup2(&file_action, pipe_out, 1);
-        if (ret != 0) {
-            printf("posix_spawn_file_actions_adddup2 failed: %d", errno);
-        }
-        ret = posix_spawn_file_actions_addclose(&file_action, pipe_out);
-        if (ret != 0) {
-            printf("posix_spawn_file_actions_addclose failed: %d", errno);
-        }
-        // printf("[%d] child process will close pipe_out = %d\n", child, pipe_out);
-    }
-    if (pipe_in != NO_PIPE) {
-        // posix_spawn_file_actions_addclose(&file_action, pipe_out);
-        ret = posix_spawn_file_actions_adddup2(&file_action, pipe_in, 0);
-        if (ret != 0) {
-            printf("posix_spawn_file_actions_adddup2 failed: %d", errno);
-        }
-        ret = posix_spawn_file_actions_addclose(&file_action, pipe_in);
-        if (ret != 0) {
-            printf("posix_spawn_file_actions_addclose failed: %d", errno);
-        }
-        // printf("[%d] child process will close pipe_in = %d\n", child, pipe_in);
+    ret = set_child_process_file_actions(&file_action, redirected, pipe_in, pipe_out);
+    if (ret != 0) {
+        sys_error ("set child process file actions error code = %d\n", errno);
+        return (0 - errno);
     }
 
     // printf("[%d] child process will close pipe_in = %d, pipe_out = %d\n", child, pipe_in, pipe_out);
     // do_piping(pipe_in, pipe_out);
     char **current_env = make_env_array_from_var_list(all_visible_variables());
-    making_children();
-    ret = posix_spawn(&mypid, cmd_path, &file_action, NULL, argvs, current_env);
+
+    // restore sigmask for child
+    posix_spawnattr_t attr;
+    posix_spawnattr_init(&attr);
+    posix_attribute_restore_sigmask(&attr);
+
+    making_children(); // this must be specified for children_routine_simple_cmd as this might be called after expand_words which would also make child
+    ret = posix_spawn(&mypid, cmd_path, &file_action, &attr, argvs, current_env);
     if (ret != 0) {
         sys_error ("posix_spawn error code = %d\n", errno);
-        return (void *)(0 - errno);
+        return (0 - errno);
     }
 
     // waitpid(mypid, &ret, 0); // no need to wait here. after make_child there will be wait_for of bash for more functionalities
     add_process(cmd, mypid);
     posix_spawn_file_actions_destroy(&file_action);
+    posix_spawnattr_destroy(&attr);
     itrace("bash new process [%d] started %d\n", mypid, ret);
-    return (void *)mypid;
+    return mypid;
 }
 
 pthread_t
@@ -5577,29 +5594,8 @@ SIMPLE_COM *cmd_list_simple;
     pthread_t tid = 0;
     itrace("func: %s, execute %s in child process", __func__, arg->command_str);
     /* Create the child, handle severe errors.  Retry on EAGAIN. */
-    while ((pthread_create(&tid, NULL,
-                           children_routine_simple_cmd, arg)) < 0 && errno == EAGAIN && forksleep < FORKSLEEP_MAX) {
-        /* bash-4.2 */
-        /* keep SIGTERM blocked until we reset the handler to SIG_IGN */
-        sigprocmask (SIG_SETMASK, &oset_copy, (sigset_t *)NULL);
-        /* If we can't create any children, try to reap some dead ones. */
-        waitchld (-1, 0);
-
-        errno = EAGAIN;		/* restore errno */
-        sys_error ("fork: retry");
-
-        if (sleep (forksleep) != 0) {
-            break;
-        }
-        forksleep <<= 1;
-
-        if (interrupt_state) {
-            break;
-        }
-        sigprocmask (SIG_SETMASK, &set, (sigset_t *)NULL);
-    }
-    int new_pid = 0;
-    pthread_join(tid, (void **)&new_pid);
+    int new_pid = children_routine_simple_cmd((void *)arg);
+    // pthread_join(tid, (void **)&new_pid);
     itrace("%s child thread spawn new process [%d] executing: %s", __func__, new_pid,
            arg->command_str);
     // assert(pthread_ret == 0);
@@ -5610,7 +5606,7 @@ SIMPLE_COM *cmd_list_simple;
     //   if (interactive_shell)
     //     set_signal_handler (SIGTERM, oterm);
 
-    if (pid < 0 && pid != -1) { // 
+    if (pid < 0 && pid != -1) { //
         sys_error ("posix_spawn");
 
         /* Kill all of the processes in the current pipeline. */
@@ -5680,17 +5676,19 @@ SIMPLE_COM *cmd_list_simple;
      have been created (execute_cmd.c:execute_pipeline()). */
     sigprocmask (SIG_SETMASK, &oset, (sigset_t *)NULL);
 
-    return (tid);
+    return (new_pid);
 }
 
-void *children_routine_for_pipe_cmd (void *args) {
+// handles background command and unexpanded command
+int children_routine_for_pipe_cmd (void *args) {
     struct nofork_child_args *recv_args = (struct nofork_child_args *)args;
     int async_p = recv_args->async;
 //   int flags = recv_args->flags;
     char *command = recv_args->command_str;
     itrace("thread id = %d, word list in %s:", syscall(SYS_gettid), __func__);
     SIMPLE_COM *simple_cmd = (SIMPLE_COM *)recv_args->cmd_list;
-    WORD_LIST *cmd_list = expand_words(simple_cmd->words); // This looks like the only difference with children_routine_simple_cmd
+    WORD_LIST *cmd_list = expand_words(
+                              simple_cmd->words); // This looks like the only difference with children_routine_simple_cmd
     WORD_LIST *current = cmd_list;
     while ( current != NULL) {
         itrace(" %s ", current->word->word);
@@ -5719,56 +5717,19 @@ void *children_routine_for_pipe_cmd (void *args) {
     posix_spawn_file_actions_init(&file_action);
 
     int ret = 0;
-    if (redirected) {
-        // char *redirectee_word = redirection_expand(redirected->redirectee.filename);
-        if (0 <= redirected->redirectee.dest && redirected->redirectee.dest < 4) {
-            // echo xxx 2>&1 (dup2(1, 2) redirects stderror to stdout)
-            ret = posix_spawn_file_actions_adddup2(&file_action, redirected->redirectee.dest, redirected->redirector.dest);
-            if (redirected->next != NULL) {
-                // echo xxx 2>&1 > a.log
-                ret = posix_spawn_file_actions_addopen(&file_action, (size_t)redirected->redirectee.filename,
-                                            redirected->next->redirectee.filename->word, redirected->next->flags, 0666);
-            }
-        } else {
-            // echo xxx > a.log
-            itrace("redirected: %s", redirected->redirectee.filename->word);
-            ret = posix_spawn_file_actions_addopen(&file_action, 1,
-                                               redirected->redirectee.filename->word, redirected->flags, 0666);
-            if (redirected->next != NULL) {
-                // echo xxx > a.log 2>&1
-                // printf("redirected->next->redirectee.filename.word = %s\n", redirected->next->redirectee.filename->word);
-                // redirectee_word = redirection_expand(redirected->next->redirectee.filename);
-                assert(redirected->next->redirectee.dest < 4);
-                ret = posix_spawn_file_actions_adddup2(&file_action, redirected->next->redirectee.dest, redirected->next->redirector.dest);
-            }
-        }
-    }
-    if (pipe_out != NO_PIPE) {
-        // only output
-        // posix_spawn_file_actions_addclose(&file_action, pipe_in);
-        ret = posix_spawn_file_actions_adddup2(&file_action, pipe_out, 1);
-        if (ret != 0) {
-            printf("posix_spawn_file_actions_adddup2 failed: %d", errno);
-        }
-        ret = posix_spawn_file_actions_addclose(&file_action, pipe_out);
-        if (ret != 0) {
-            printf("posix_spawn_file_actions_addclose failed: %d", errno);
-        }
-    }
-    if (pipe_in != NO_PIPE) {
-        // posix_spawn_file_actions_addclose(&file_action, pipe_out);
-        ret = posix_spawn_file_actions_adddup2(&file_action, pipe_in, 0);
-        if (ret != 0) {
-            printf("posix_spawn_file_actions_adddup2 failed: %d", errno);
-        }
-        ret = posix_spawn_file_actions_addclose(&file_action, pipe_in);
-        if (ret != 0) {
-            printf("posix_spawn_file_actions_addclose failed: %d", errno);
-        }
+    ret = set_child_process_file_actions(&file_action, redirected, pipe_in, pipe_out);
+    if (ret != 0) {
+        sys_error ("set child process file actions error code = %d\n", errno);
+        return (0 - errno);
     }
 
+    // restore sigmask for child
+    posix_spawnattr_t attr;
+    posix_spawnattr_init(&attr);
+    posix_attribute_restore_sigmask(&attr);
+
     char **current_env = make_env_array_from_var_list(all_visible_variables());
-    ret = posix_spawn(&mypid, cmd_path, &file_action, NULL, argvs, current_env);
+    ret = posix_spawn(&mypid, cmd_path, &file_action, &attr, argvs, current_env);
     if (ret != 0) {
         itrace("posix_spawn error code = %d\n", errno);
         exit(errno);
@@ -5776,7 +5737,7 @@ void *children_routine_for_pipe_cmd (void *args) {
     add_process(cmd, mypid);
     // waitpid(mypid, &ret, 0);
     itrace("bash new process [%d] started %d\n", mypid, ret);
-    return (void *)mypid;
+    return mypid;
 }
 
 pthread_t
@@ -5836,33 +5797,10 @@ SIMPLE_COM *cmd_list;
     arg->cmd_list = (void *)cmd_list;
     arg->pipe_in = pipe_in;
     arg->pipe_out = pipe_out;
-    pthread_t tid = 0;
+    // pthread_t tid = 0;
     itrace("func: %s, execute %s in new bash", __func__, arg->command_str);
-    /* Create the child, handle severe errors.  Retry on EAGAIN. */
-    while ((pthread_create(&tid, NULL,
-                           children_routine_for_pipe_cmd, arg)) < 0 && errno == EAGAIN &&
-            forksleep < FORKSLEEP_MAX) {
-        /* bash-4.2 */
-        /* keep SIGTERM blocked until we reset the handler to SIG_IGN */
-        sigprocmask (SIG_SETMASK, &oset_copy, (sigset_t *)NULL);
-        /* If we can't create any children, try to reap some dead ones. */
-        waitchld (-1, 0);
-
-        errno = EAGAIN;		/* restore errno */
-        sys_error ("fork: retry");
-
-        if (sleep (forksleep) != 0) {
-            break;
-        }
-        forksleep <<= 1;
-
-        if (interrupt_state) {
-            break;
-        }
-        sigprocmask (SIG_SETMASK, &set, (sigset_t *)NULL);
-    }
-    int new_pid = 0;
-    pthread_join(tid, (void **)&new_pid);
+    int new_pid = children_routine_for_pipe_cmd((void *) arg);
+    // pthread_join(tid, (void **)&new_pid);
     itrace("%s child thread spawn new process [%d] executing: %s", __func__, new_pid,
            arg->command_str);
     // assert(pthread_ret == 0);
@@ -5943,11 +5881,11 @@ SIMPLE_COM *cmd_list;
      have been created (execute_cmd.c:execute_pipeline()). */
     sigprocmask (SIG_SETMASK, &oset, (sigset_t *)NULL);
 
-    return (tid);
+    return (new_pid);
 }
 
-static void *children_routine_for_subshell (void *args) {
-    struct nofork_child_args *recv_args = (struct nofork_child_args *)args;
+static int children_routine_for_subshell (struct nofork_child_args *recv_args) {
+    // struct nofork_child_args *recv_args = (struct nofork_child_args *)args;
     char *command = recv_args->command_str;
     int pipe_in = recv_args->pipe_in;
     int pipe_out = recv_args->pipe_out;
@@ -5983,10 +5921,10 @@ static void *children_routine_for_subshell (void *args) {
     }
     close(fd);
 
-    char bash_bin[PATH_MAX];
+    char bash_bin[PATH_MAX] = {0};
     readlink("/proc/self/exe", bash_bin, PATH_MAX);
     itrace("command substitute spawn new bash at %s", bash_bin);
-    char *argv[3] = {"bash", subshell_script, "\0"};
+    char *argv[] = {"bash", subshell_script, NULL};
     // as this is command substitution, we must export all local variables to new spawned bash process
     char **current_env = make_env_array_from_var_list(all_visible_variables());
     ret = posix_spawn(&mypid, bash_bin, NULL, NULL, argv,
@@ -6001,7 +5939,7 @@ static void *children_routine_for_subshell (void *args) {
     // recv_args->ret = mypid;
     unlink(subshell_script);
     itrace("bash new process [%d] ends with %d\n", mypid, ret);
-    return (void *)mypid;
+    return mypid;
 }
 
 pthread_t make_child_without_fork_for_subshell(command, flags, pipe_in, pipe_out)
@@ -6062,30 +6000,8 @@ int pipe_out;
     pthread_t tid = 0;
     itrace("func: %s, execute %s in new bash", __func__, arg->command_str);
     /* Create the child, handle severe errors.  Retry on EAGAIN. */
-    while ((pthread_create(&tid, NULL,
-                           children_routine_for_subshell, arg)) < 0 && errno == EAGAIN &&
-            forksleep < FORKSLEEP_MAX) {
-        /* bash-4.2 */
-        /* keep SIGTERM blocked until we reset the handler to SIG_IGN */
-        sigprocmask (SIG_SETMASK, &oset_copy, (sigset_t *)NULL);
-        /* If we can't create any children, try to reap some dead ones. */
-        waitchld (-1, 0);
-
-        errno = EAGAIN;		/* restore errno */
-        sys_error ("fork: retry");
-
-        if (sleep (forksleep) != 0) {
-            break;
-        }
-        forksleep <<= 1;
-
-        if (interrupt_state) {
-            break;
-        }
-        sigprocmask (SIG_SETMASK, &set, (sigset_t *)NULL);
-    }
-    int new_pid = 0;
-    pthread_join(tid, (void **)&new_pid);
+    int new_pid = children_routine_for_subshell(arg);
+    // pthread_join(tid, (void **)&new_pid);
     itrace("%s child thread spawn new process [%d] executing: %s", __func__, new_pid,
            arg->command_str);
     // assert(pthread_ret == 0);
@@ -6166,11 +6082,11 @@ int pipe_out;
      have been created (execute_cmd.c:execute_pipeline()). */
     sigprocmask (SIG_SETMASK, &oset, (sigset_t *)NULL);
 
-    return (tid);
+    return (new_pid);
 }
 
-static void *children_routine_for_process_subst (void *args) {
-    struct nofork_child_args *recv_args = (struct nofork_child_args *)args;
+static int children_routine_for_process_subst (struct nofork_child_args *recv_args) {
+    // struct nofork_child_args *recv_args = (struct nofork_child_args *)args;
     char *command = recv_args->command_str;
     int parent_pipe_fd = recv_args->pipe_in;
     int child_pipe_fd = recv_args->pipe_out;
@@ -6187,7 +6103,8 @@ static void *children_routine_for_process_subst (void *args) {
 
     // Derived from subst.c: 5975 to manipulate file actions of child pipe
     // for commands in command substitution, we just need to close read end, and duplicate write end
-    ret = posix_spawn_file_actions_adddup2(&file_action, child_pipe_fd, open_for_read_in_child ? 0 : 1);
+    ret = posix_spawn_file_actions_adddup2(&file_action, child_pipe_fd,
+                                           open_for_read_in_child ? 0 : 1);
     if (ret != 0) {
         printf("posix_spawn_file_actions_adddup2 failed: %d", errno);
     }
@@ -6216,7 +6133,7 @@ static void *children_routine_for_process_subst (void *args) {
         itrace("create tmp file %s failed\n", subshell_script);
         exit(1);
     }
-    SHELL_VAR ** shell_functions = all_visible_functions();
+    SHELL_VAR **shell_functions = all_visible_functions();
     if (shell_functions != NULL) {
         print_func_list_to_file(shell_functions, fd);
     }
@@ -6225,18 +6142,18 @@ static void *children_routine_for_process_subst (void *args) {
         itrace("write tmp file %s failed\n", subshell_script);
         exit(1);
     }
- 
+
     close(fd);
 
-    char bash_bin[PATH_MAX];
+    char bash_bin[PATH_MAX] = {0};
     readlink("/proc/self/exe", bash_bin, PATH_MAX);
     itrace("command substitute spawn new bash at %s", bash_bin);
-    char *argv[ARG_MAX] = {"bash", subshell_script};
+    char *argv[ARG_MAX] = {"bash", subshell_script, NULL};
     int shell_argv = 0;
     char **shell_args = strvec_from_word_list(list_rest_of_args(), 0, 0, &shell_argv);
     // printf("append argv:\n");
-    for(int i = 0; i< shell_argv; i++) {
-        argv[2+i] = shell_args[i];
+    for (int i = 0; i < shell_argv; i++) {
+        argv[2 + i] = shell_args[i];
         // printf("%s", argv[2+i]);
     }
     // as this is command substitution, we must export all local variables to new spawned bash process
@@ -6252,11 +6169,12 @@ static void *children_routine_for_process_subst (void *args) {
     // recv_args->ret = mypid;
     unlink(subshell_script);
     itrace("bash new process [%d] ends with %d\n", mypid, ret);
-    return (void *)mypid;
+    return mypid;
 }
 
 // Lack processes after fork
-pthread_t make_child_without_fork_for_process_subst(command, flags, pipe_in, pipe_out, open_for_read_in_child)
+pthread_t make_child_without_fork_for_process_subst(command, flags, pipe_in, pipe_out,
+        open_for_read_in_child)
 char *command;
 int flags;
 int pipe_in;
@@ -6311,29 +6229,8 @@ int open_for_read_in_child;
     pthread_t tid = 0;
     itrace("func: %s, execute %s in new bash", __func__, arg->command_str);
     /* Create the child, handle severe errors.  Retry on EAGAIN. */
-    while ((pthread_create(&tid, NULL,
-                           children_routine_for_process_subst, arg)) < 0 && errno == EAGAIN && forksleep < FORKSLEEP_MAX) {
-        /* bash-4.2 */
-        /* keep SIGTERM blocked until we reset the handler to SIG_IGN */
-        sigprocmask (SIG_SETMASK, &oset_copy, (sigset_t *)NULL);
-        /* If we can't create any children, try to reap some dead ones. */
-        waitchld (-1, 0);
-
-        errno = EAGAIN;		/* restore errno */
-        sys_error ("fork: retry");
-
-        if (sleep (forksleep) != 0) {
-            break;
-        }
-        forksleep <<= 1;
-
-        if (interrupt_state) {
-            break;
-        }
-        sigprocmask (SIG_SETMASK, &set, (sigset_t *)NULL);
-    }
-    int new_pid = 0;
-    pthread_join(tid, (void **)&new_pid);
+    int new_pid = children_routine_for_process_subst(arg);
+    // pthread_join(tid, (void **)&new_pid);
     itrace("%s child thread spawn new process [%d] executing: %s", __func__, new_pid,
            arg->command_str);
     // assert(pthread_ret == 0);
@@ -6414,5 +6311,5 @@ int open_for_read_in_child;
      have been created (execute_cmd.c:execute_pipeline()). */
     sigprocmask (SIG_SETMASK, &oset, (sigset_t *)NULL);
 
-    return (tid);
+    return (new_pid);
 }

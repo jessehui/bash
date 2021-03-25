@@ -1047,7 +1047,7 @@ int fd;
 
     int saved_stdout = dup(STDOUT_FILENO);
     if (dup2(fd, STDOUT_FILENO) == -1) {
-        perror("dup2 failed"); 
+        perror("dup2 failed");
         exit(1);
     }
 
