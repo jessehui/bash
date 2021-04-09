@@ -28,6 +28,12 @@
 #include <stdio.h>
 #include <signal.h>
 #include <errno.h>
+#include <pthread.h>
+#include <spawn.h>
+#include <assert.h>
+// #include <unistd.h>
+#include <sys/syscall.h>
+#include <stdarg.h>
 
 #if defined (HAVE_UNISTD_H)
 #  include <unistd.h>
@@ -2924,6 +2930,12 @@ wait_for (pid, flags)
 pid_t pid;
 int flags;
 {
+    // To handle child thread error before posix_spawn
+    if (pid == -1) {
+        return -1;
+    }
+
+    itrace("wait for child [%d] to exit", pid);
     int job, termination_state, r;
     WAIT s;
     register PROCESS *child;
@@ -3763,6 +3775,35 @@ int sig;
     SIGRETURN (n);
 }
 
+void printSignalSet(sigset_t *set) {
+    /* This listing of signals may be incomplete. */
+    const int sigList[] = { SIGHUP, SIGINT, SIGQUIT, SIGILL,
+                            SIGABRT, SIGFPE, SIGKILL, SIGSEGV,
+                            SIGPIPE, SIGALRM, SIGTERM, SIGUSR1,
+                            SIGUSR2, SIGCHLD, SIGCONT, SIGSTOP,
+                            SIGTSTP, SIGTTIN, SIGTTOU
+                          };
+    const char *sigNames[] = { "SIGHUP", "SIGINT", "SIGQUIT", "SIGILL",
+                               "SIGABRT", "SIGFPE", "SIGKILL", "SIGSEGV",
+                               "SIGPIPE", "SIGALRM", "SIGTERM", "SIGUSR1",
+                               "SIGUSR2", "SIGCHLD", "SIGCONT", "SIGSTOP",
+                               "SIGTSTP", "SIGTTIN", "SIGTTOU"
+                             };
+    const int sigLen = 19;
+
+    for (int i = 0; i < sigLen; i++) {
+        int ret = sigismember(set, sigList[i]);
+        if (ret == -1) {
+            perror("sigismember:");
+            exit(EXIT_FAILURE);
+        } else if (ret == 1) {
+            printf("Signal %s=%d IS in the set.\n", sigNames[i], sigList[i]);
+        } else {
+            printf("Signal %s=%d is not in the set.\n", sigNames[i], sigList[i]);
+        }
+    }
+}
+
 /* waitchld() reaps dead or stopped children.  It's called by wait_for and
    sigchld_handler, and runs until there aren't any children terminating any
    more.
@@ -3805,7 +3846,14 @@ int block;
             internal_warning (_("waitchld: turning on WNOHANG to avoid indefinite block"));
             waitpid_flags |= WNOHANG;
         }
-
+        // sigset_t set;
+        // if(sigprocmask(0, NULL, &set) != 0)
+        // {
+        //     perror("sigprocmask:");
+        //     exit(EXIT_FAILURE);
+        // }
+        // printf("--- signal mask for this process: ---\n");
+        // printSignalSet(&set);
         pid = WAITPID (-1, &status, waitpid_flags);
 
 #if 0
@@ -5135,3 +5183,1133 @@ int *p;
 }
 
 #endif /* PGRP_PIPE */
+
+// To support environment without fork
+static const char tmp_file_template[] = ".script.lock.XXXXXX";
+extern char *find_path_file_safe PARAMS((const char *, char *));
+extern char *redirection_expand PARAMS((WORD_DESC *));
+#define ARG_MAX 131072 // based on limits.h
+
+static int children_routine_for_subst (struct nofork_child_args *recv_args) {
+    // struct nofork_child_args *recv_args = (struct nofork_child_args *)args;
+    char *command = recv_args->command_str;
+    int pipe_in = recv_args->pipe_in;
+    int pipe_out = recv_args->pipe_out;
+    itrace("child_thread [%ld] for command substitution will execute: %s",
+           syscall(SYS_gettid),
+           command);
+
+    // It's better to call to parse_and_execute but we can hardly jump there without messing this process
+    int ret = 0;
+    pid_t mypid;
+    posix_spawn_file_actions_t file_action;
+    posix_spawn_file_actions_init(&file_action);
+
+    // for commands in command substitution, we just need to close read end, and duplicate write end
+    ret = posix_spawn_file_actions_adddup2(&file_action, pipe_out, 1);
+    if (ret != 0) {
+        printf("posix_spawn_file_actions_adddup2 failed: %d", errno);
+    }
+
+    // derived from subst.c:6430
+    /* If standard output is closed in the parent shell
+     (such as after `exec >&-'), file descriptor 1 will be
+     the lowest available file descriptor, and end up in
+     fildes[0].  This can happen for stdin and stderr as well,
+     but stdout is more important -- it will cause no output
+     to be generated from this command. */
+    if ((pipe_out != fileno (stdin)) &&
+            (pipe_out != fileno (stdout)) &&
+            (pipe_out != fileno (stderr))) {
+        ret = posix_spawn_file_actions_addclose(&file_action, pipe_out);
+        if (ret != 0) {
+            printf("posix_spawn_file_actions_addclose failed: %d", errno);
+        }
+    }
+
+    if ((pipe_in != fileno (stdin)) &&
+            (pipe_in != fileno (stdout)) &&
+            (pipe_in != fileno (stderr))) {
+        ret = posix_spawn_file_actions_addclose(&file_action, pipe_in);
+        if (ret != 0) {
+            printf("posix_spawn_file_actions_addclose failed: %d", errno);
+        }
+    }
+
+    // generate a tmp file name which must be under the same diretory with the actual script file
+    char subshell_script[PATH_MAX] = {0};
+    strncpy(subshell_script, shell_script_dir_path, strlen(shell_script_dir_path));
+    strncat(subshell_script, "/", 1);
+    strncat(subshell_script, tmp_file_template, strlen(tmp_file_template));
+    // generate a tmp file name and open
+    int fd = mkstemp(subshell_script);
+    itrace("create tmp file: %s\n", subshell_script);
+    if (fd == 0) {
+        itrace("create tmp file %s failed\n", subshell_script);
+        exit(1);
+    }
+    SHELL_VAR **shell_functions = all_visible_functions();
+    if (shell_functions != NULL) {
+        print_func_list_to_file(shell_functions, fd);
+    }
+    size_t len = write(fd, command, strlen(command));
+    if (len <= 0) {
+        itrace("write tmp file %s failed\n", subshell_script);
+        exit(1);
+    }
+    close(fd);
+
+    char bash_bin[PATH_MAX] = {0};
+    readlink("/proc/self/exe", bash_bin, PATH_MAX);
+    itrace("command substitute spawn new bash at %s", bash_bin);
+    char *argv[] = {"bash", subshell_script, NULL};
+
+    // as this is command substitution, we must export all local variables to new spawned bash process
+    char **current_env = make_env_array_from_var_list(all_visible_variables());
+    // char **argv = make_argv(2, "bash", subshell_script);
+    ret = posix_spawn(&mypid, bash_bin, &file_action, NULL, argv,
+                      current_env);
+    if (ret != 0) {
+        itrace("posix_spawn error code = %d\n", errno);
+        // unlink(subshell_script);
+        exit(errno);
+    }
+
+    waitpid(mypid, &ret, 0);
+    // add_process(command, mypid);
+    // recv_args->ret = mypid;
+    unlink(subshell_script);
+    itrace("bash new process [%d] ends with %d\n", mypid, ret);
+    posix_spawn_file_actions_destroy(&file_action);
+    return mypid;
+}
+
+// Lack processes after fork
+pthread_t make_child_without_fork_for_subst(command, flags, pipe_in, pipe_out)
+char *command;
+int flags;
+int pipe_in;
+int pipe_out;
+{
+    int async_p, forksleep;
+    sigset_t set, oset, termset, chldset, oset_copy;
+    pid_t pid;
+    SigHandler *oterm;
+    char stack[1024 + PATH_MAX];
+
+    sigemptyset (&oset_copy);
+    sigprocmask (SIG_BLOCK, (sigset_t *)NULL, &oset_copy);
+    sigaddset (&oset_copy, SIGTERM);
+
+    /* Block SIGTERM here and unblock in child after fork resets the
+       set of pending signals. */
+    sigemptyset (&set);
+    sigaddset (&set, SIGCHLD);
+    sigaddset (&set, SIGINT);
+    sigaddset (&set, SIGTERM);
+
+    sigemptyset (&oset);
+    sigprocmask (SIG_BLOCK, &set, &oset);
+
+    /* Blocked in the parent, child will receive it after unblocking SIGTERM */
+    if (interactive_shell) {
+        oterm = set_signal_handler (SIGTERM, SIG_DFL);
+    }
+
+    making_children ();
+
+    async_p = (flags & FORK_ASYNC);
+    forksleep = 1;
+
+#if defined (BUFFERED_INPUT)
+    /* If default_buffered_input is active, we are reading a script.  If
+       the command is asynchronous, we have already duplicated /dev/null
+       as fd 0, but have not changed the buffered stream corresponding to
+       the old fd 0.  We don't want to sync the stream in this case. */
+    if (default_buffered_input != -1 &&
+            (!async_p || default_buffered_input > 0)) {
+        sync_buffered_stream (default_buffered_input);
+    }
+#endif /* BUFFERED_INPUT */
+
+    struct nofork_child_args *arg = (struct nofork_child_args *)calloc(1,
+                                    sizeof(struct nofork_child_args));
+    arg->async = async_p;
+    // arg->flags = flags;
+    arg->command_str = command;
+    // arg.cmd_list = cmd_list;
+    arg->pipe_in = pipe_in;
+    arg->pipe_out = pipe_out;
+    pthread_t tid = 0;
+    itrace("func: %s, execute %s in new bash", __func__, arg->command_str);
+    /* Create the child, handle severe errors.  Retry on EAGAIN. */
+    int new_pid = children_routine_for_subst(arg);
+    // pthread_join(tid, (void **)&new_pid);
+    itrace("%s child thread spawn new process [%d] executing: %s", __func__, new_pid,
+           arg->command_str);
+    pid = new_pid;
+    free(arg);
+
+    if (pid < 0) {
+        sys_error ("fork");
+
+        /* Kill all of the processes in the current pipeline. */
+        terminate_current_pipeline ();
+
+        /* Discard the current pipeline, if any. */
+        if (the_pipeline) {
+            kill_current_pipeline ();
+        }
+
+        set_exit_status (EX_NOEXEC);
+        throw_to_top_level ();	/* Reset signals, etc. */
+    }
+
+    /* In the parent.  Remember the pid of the child just created
+    as the proper pgrp if this is the first child. */
+
+    if (job_control) {
+        if (pipeline_pgrp == 0) {
+            pipeline_pgrp = pid;
+            /* Don't twiddle terminal pgrps in the parent!  This is the bug,
+            not the good thing of twiddling them in the child! */
+            /* give_terminal_to (pipeline_pgrp, 0); */
+        }
+        /* This is done on the recommendation of the Rationale section of
+           the POSIX 1003.1 standard, where it discusses job control and
+           shells.  It is done to avoid possible race conditions. (Ref.
+           1003.1 Rationale, section B.4.3.3, page 236). */
+        setpgid (pid, pipeline_pgrp);
+    } else {
+        if (pipeline_pgrp == 0) {
+            pipeline_pgrp = shell_pgrp;
+        }
+    }
+
+    if (async_p) {
+        last_asynchronous_pid = pid;
+    }
+
+    last_made_pid = new_pid;
+
+    /* keep stats */
+    js.c_totforked++;
+    js.c_living++;
+
+    /* Unblock SIGTERM, SIGINT, and SIGCHLD unless creating a pipeline, in
+    which case SIGCHLD remains blocked until all commands in the pipeline
+     have been created (execute_cmd.c:execute_pipeline()). */
+    sigprocmask (SIG_SETMASK, &oset, (sigset_t *)NULL);
+
+    return (new_pid);
+}
+
+static int set_child_process_file_actions(posix_spawn_file_actions_t *file_action,
+        REDIRECT *redirected, int pipe_in, int pipe_out) {
+    int ret = 0;
+    if (redirected) {
+        // char *redirectee_word = redirection_expand(redirected->redirectee.filename);
+        if (0 <= redirected->redirectee.dest && redirected->redirectee.dest < 4) {
+            // echo xxx 2>&1 (dup2(1, 2) redirects stderror to stdout)
+            ret = posix_spawn_file_actions_adddup2(file_action, redirected->redirectee.dest,
+                                                   redirected->redirector.dest);
+            if (redirected->next != NULL) {
+                // echo xxx 2>&1 > a.log
+                ret = posix_spawn_file_actions_addopen(file_action,
+                                                       (size_t)redirected->redirectee.filename,
+                                                       redirected->next->redirectee.filename->word, redirected->next->flags, 0666);
+            }
+        } else {
+            // echo xxx > a.log
+            ret = posix_spawn_file_actions_addopen(file_action, 1,
+                                                   redirected->redirectee.filename->word, redirected->flags, 0666);
+            if (redirected->next != NULL) {
+                // echo xxx > a.log 2>&1
+                // printf("redirected->next->redirectee.filename.word = %s\n", redirected->next->redirectee.filename->word);
+                // redirectee_word = redirection_expand(redirected->next->redirectee.filename);
+                assert(redirected->next->redirectee.dest < 4);
+                ret = posix_spawn_file_actions_adddup2(file_action, redirected->next->redirectee.dest,
+                                                       redirected->next->redirector.dest);
+            }
+        }
+    }
+    if (pipe_out != NO_PIPE) {
+        // only output
+        // posix_spawn_file_actions_addclose(&file_action, pipe_in);
+        ret = posix_spawn_file_actions_adddup2(file_action, pipe_out, 1);
+        if (ret != 0) {
+            printf("posix_spawn_file_actions_adddup2 failed: %d", errno);
+        }
+        ret = posix_spawn_file_actions_addclose(file_action, pipe_out);
+        if (ret != 0) {
+            printf("posix_spawn_file_actions_addclose failed: %d", errno);
+        }
+        // printf("[%d] child process will close pipe_out = %d\n", child, pipe_out);
+    }
+    if (pipe_in != NO_PIPE) {
+        // posix_spawn_file_actions_addclose(&file_action, pipe_out);
+        ret = posix_spawn_file_actions_adddup2(file_action, pipe_in, 0);
+        if (ret != 0) {
+            printf("posix_spawn_file_actions_adddup2 failed: %d", errno);
+        }
+        ret = posix_spawn_file_actions_addclose(file_action, pipe_in);
+        if (ret != 0) {
+            printf("posix_spawn_file_actions_addclose failed: %d", errno);
+        }
+        // printf("[%d] child process will close pipe_in = %d\n", child, pipe_in);
+    }
+    return ret;
+}
+
+static int children_routine_simple_cmd (struct nofork_child_args *recv_args) {
+    // struct nofork_child_args *recv_args = (struct nofork_child_args *)args;
+    int async_p = recv_args->async;
+    // char *command = recv_args->command_str;
+    SIMPLE_COM *simple_cmd = (SIMPLE_COM *)recv_args->cmd_list;
+    // WORD_LIST *cmd_list = expand_words(simple_cmd->words);
+    WORD_LIST *cmd_list = simple_cmd->words;
+    itrace("thread id = %d, word list in %s:", syscall(SYS_gettid), __func__);
+    WORD_LIST *current = cmd_list;
+    while ( current != NULL) {
+        itrace(" %s ", current->word->word);
+        current = current->next;
+    }
+    REDIRECT *redirected = simple_cmd->redirects;
+    int pipe_in = recv_args->pipe_in;
+    int pipe_out = recv_args->pipe_out;
+    // itrace("child thread [%ld] pipe_in = %d, pipe_out = %d", syscall(SYS_gettid), pipe_in, pipe_out);
+    // int child = syscall(SYS_gettid);
+    // itrace("child_thread of [%d] for simple cmd will execute: %s\n", getpid(), command);
+    char *cmd = strdup(cmd_list->word->word);
+    char *cmd_path = (char *)calloc(1, PATH_MAX);
+    if (find_path_file_safe(cmd, cmd_path) == NULL ) {
+        itrace("file not found");
+        add_process(cmd, -1);
+        return -1;
+    }; // [!]find_path_file fails for no reason. might be memory problem.
+    // char *cmd_path = find_path_file_safe(cmd);
+
+    itrace("command path at %p\n", cmd_path);
+    itrace("command path = %s\n", cmd_path);
+
+    char **argvs = strvec_from_word_list (cmd_list, 0, 0, (int *)NULL);
+    itrace("argv[1] = %s\n", argvs[1]);
+    /* In the child.  Give this child the right process group, set the
+     signals to the default state for a new process. */
+    pid_t mypid;
+    int ret = 0;
+    posix_spawn_file_actions_t file_action;
+    posix_spawn_file_actions_init(&file_action);
+
+    // echo xxx 2>&1 > a.log needs:
+    // dup2(1,2), open(a.log) = 3, dup2(3,1)
+
+    ret = set_child_process_file_actions(&file_action, redirected, pipe_in, pipe_out);
+    if (ret != 0) {
+        sys_error ("set child process file actions error code = %d\n", errno);
+        return (0 - errno);
+    }
+
+    // printf("[%d] child process will close pipe_in = %d, pipe_out = %d\n", child, pipe_in, pipe_out);
+    // do_piping(pipe_in, pipe_out);
+    char **current_env = make_env_array_from_var_list(all_visible_variables());
+
+    // restore sigmask for child
+    posix_spawnattr_t attr;
+    posix_spawnattr_init(&attr);
+    posix_attribute_restore_sigmask(&attr);
+
+    making_children(); // this must be specified for children_routine_simple_cmd as this might be called after expand_words which would also make child
+    ret = posix_spawn(&mypid, cmd_path, &file_action, &attr, argvs, current_env);
+    if (ret != 0) {
+        sys_error ("posix_spawn error code = %d\n", errno);
+        return (0 - errno);
+    }
+
+    // waitpid(mypid, &ret, 0); // no need to wait here. after make_child there will be wait_for of bash for more functionalities
+    add_process(cmd, mypid);
+    posix_spawn_file_actions_destroy(&file_action);
+    posix_spawnattr_destroy(&attr);
+    itrace("bash new process [%d] started %d\n", mypid, ret);
+    return mypid;
+}
+
+pthread_t
+make_child_without_fork_simple_cmd(command, flags,  pipe_in, pipe_out, cmd_list_simple)
+char *command;
+int flags;
+int pipe_in;
+int pipe_out;
+SIMPLE_COM *cmd_list_simple;
+{
+    int async_p, forksleep;
+    sigset_t set, oset, termset, chldset, oset_copy;
+    pid_t pid;
+    SigHandler *oterm;
+    char stack[1024 + PATH_MAX];
+
+    sigemptyset (&oset_copy);
+    sigprocmask (SIG_BLOCK, (sigset_t *)NULL, &oset_copy);
+    sigaddset (&oset_copy, SIGTERM);
+
+    /* Block SIGTERM here and unblock in child after fork resets the
+       set of pending signals. */
+    sigemptyset (&set);
+    sigaddset (&set, SIGCHLD);
+    sigaddset (&set, SIGINT);
+    sigaddset (&set, SIGTERM);
+
+    sigemptyset (&oset);
+    sigprocmask (SIG_BLOCK, &set, &oset);
+
+    /* Blocked in the parent, child will receive it after unblocking SIGTERM */
+    if (interactive_shell) {
+        oterm = set_signal_handler (SIGTERM, SIG_DFL);
+    }
+
+    making_children ();
+
+    async_p = (flags & FORK_ASYNC);
+    forksleep = 1;
+
+#if defined (BUFFERED_INPUT)
+    /* If default_buffered_input is active, we are reading a script.  If
+       the command is asynchronous, we have already duplicated /dev/null
+       as fd 0, but have not changed the buffered stream corresponding to
+       the old fd 0.  We don't want to sync the stream in this case. */
+    if (default_buffered_input != -1 &&
+            (!async_p || default_buffered_input > 0)) {
+        sync_buffered_stream (default_buffered_input);
+    }
+#endif /* BUFFERED_INPUT */
+
+    struct nofork_child_args *arg = (struct nofork_child_args *)calloc(1,
+                                    sizeof(struct nofork_child_args));
+    arg->async = async_p;
+    // arg.flags = flags;
+    arg->command_str = strdup(command);
+    arg->cmd_list = (void *)cmd_list_simple;
+    arg->pipe_in = pipe_in;
+    arg->pipe_out = pipe_out;
+    pthread_t tid = 0;
+    itrace("func: %s, execute %s in child process", __func__, arg->command_str);
+    /* Create the child, handle severe errors.  Retry on EAGAIN. */
+    int new_pid = children_routine_simple_cmd((void *)arg);
+    // pthread_join(tid, (void **)&new_pid);
+    itrace("%s child thread spawn new process [%d] executing: %s", __func__, new_pid,
+           arg->command_str);
+    // assert(pthread_ret == 0);
+    pid = new_pid;
+    free(arg);
+
+    // if (pid != 0)
+    //   if (interactive_shell)
+    //     set_signal_handler (SIGTERM, oterm);
+
+    if (pid < 0 && pid != -1) { //
+        sys_error ("posix_spawn");
+
+        /* Kill all of the processes in the current pipeline. */
+        terminate_current_pipeline ();
+
+        /* Discard the current pipeline, if any. */
+        if (the_pipeline) {
+            kill_current_pipeline ();
+        }
+
+        set_exit_status (EX_NOEXEC);
+        throw_to_top_level ();	/* Reset signals, etc. */
+    }
+
+    /* In the parent.  Remember the pid of the child just created
+    as the proper pgrp if this is the first child. */
+
+    if (job_control) {
+        if (pipeline_pgrp == 0) {
+            pipeline_pgrp = pid;
+            /* Don't twiddle terminal pgrps in the parent!  This is the bug,
+            not the good thing of twiddling them in the child! */
+            /* give_terminal_to (pipeline_pgrp, 0); */
+        }
+        /* This is done on the recommendation of the Rationale section of
+           the POSIX 1003.1 standard, where it discusses job control and
+           shells.  It is done to avoid possible race conditions. (Ref.
+           1003.1 Rationale, section B.4.3.3, page 236). */
+        setpgid (pid, pipeline_pgrp);
+    } else {
+        if (pipeline_pgrp == 0) {
+            pipeline_pgrp = shell_pgrp;
+        }
+    }
+
+    /* Place all processes into the jobs array regardless of the
+    state of job_control. */
+    // add_process (command, pid);
+
+    if (async_p) {
+        last_asynchronous_pid = pid;
+    }
+#if defined (RECYCLES_PIDS)
+    else if (last_asynchronous_pid == pid)
+        /* Avoid pid aliasing.  1 seems like a safe, unusual pid value. */
+    {
+        last_asynchronous_pid = 1;
+    }
+#endif
+
+    /* Delete the saved status for any job containing this PID in case it's
+    been reused. */
+    delete_old_job (pid); // skip this and bgp delete
+
+    /* Perform the check for pid reuse unconditionally.  Some systems reuse
+    PIDs before giving a process CHILD_MAX/_SC_CHILD_MAX unique ones. */
+    bgp_delete (pid);		/* new process, discard any saved status */
+
+    last_made_pid = new_pid;
+
+    /* keep stats */
+    js.c_totforked++;
+    js.c_living++;
+
+    /* Unblock SIGTERM, SIGINT, and SIGCHLD unless creating a pipeline, in
+    which case SIGCHLD remains blocked until all commands in the pipeline
+     have been created (execute_cmd.c:execute_pipeline()). */
+    sigprocmask (SIG_SETMASK, &oset, (sigset_t *)NULL);
+
+    return (new_pid);
+}
+
+// handles background command and unexpanded command
+int children_routine_for_pipe_cmd (void *args) {
+    struct nofork_child_args *recv_args = (struct nofork_child_args *)args;
+    int async_p = recv_args->async;
+//   int flags = recv_args->flags;
+    char *command = recv_args->command_str;
+    itrace("thread id = %d, word list in %s:", syscall(SYS_gettid), __func__);
+    SIMPLE_COM *simple_cmd = (SIMPLE_COM *)recv_args->cmd_list;
+    WORD_LIST *cmd_list = expand_words(
+                              simple_cmd->words); // This looks like the only difference with children_routine_simple_cmd
+    WORD_LIST *current = cmd_list;
+    while ( current != NULL) {
+        itrace(" %s ", current->word->word);
+        current = current->next;
+    }
+    int pipe_in = recv_args->pipe_in;
+    int pipe_out = recv_args->pipe_out;
+    REDIRECT *redirected = simple_cmd->redirects;
+    char *cmd = strdup(cmd_list->word->word);
+    char *cmd_path = (char *)calloc(1, PATH_MAX);
+    if (find_path_file_safe(cmd, cmd_path) == NULL ) {
+        itrace("file not found");
+        return -1;
+    }; // [!]find_path_file fails for no reason. might be memory problem.
+    // char *cmd_path = find_path_file_safe(cmd);
+
+    itrace("command path at %p\n", cmd_path);
+    itrace("command path = %s\n", cmd_path);
+
+    char **argvs = strvec_from_word_list (cmd_list, 0, 0, (int *)NULL);
+    //printf("argv = %s\n", argvs[0]);
+    /* In the child.  Give this child the right process group, set the
+     signals to the default state for a new process. */
+    pid_t mypid;
+    posix_spawn_file_actions_t file_action;
+    posix_spawn_file_actions_init(&file_action);
+
+    int ret = 0;
+    ret = set_child_process_file_actions(&file_action, redirected, pipe_in, pipe_out);
+    if (ret != 0) {
+        sys_error ("set child process file actions error code = %d\n", errno);
+        return (0 - errno);
+    }
+
+    // restore sigmask for child
+    posix_spawnattr_t attr;
+    posix_spawnattr_init(&attr);
+    posix_attribute_restore_sigmask(&attr);
+
+    char **current_env = make_env_array_from_var_list(all_visible_variables());
+    ret = posix_spawn(&mypid, cmd_path, &file_action, &attr, argvs, current_env);
+    if (ret != 0) {
+        itrace("posix_spawn error code = %d\n", errno);
+        exit(errno);
+    }
+    add_process(cmd, mypid);
+    // waitpid(mypid, &ret, 0);
+    itrace("bash new process [%d] started %d\n", mypid, ret);
+    return mypid;
+}
+
+pthread_t
+make_child_without_fork_pipe_cmd(command, flags, pipe_in, pipe_out, cmd_list)
+char *command;
+int flags;
+int pipe_in;
+int pipe_out;
+SIMPLE_COM *cmd_list;
+{
+    int async_p, forksleep;
+    sigset_t set, oset, termset, chldset, oset_copy;
+    pid_t pid;
+    SigHandler *oterm;
+    char stack[1024 + PATH_MAX];
+
+    sigemptyset (&oset_copy);
+    sigprocmask (SIG_BLOCK, (sigset_t *)NULL, &oset_copy);
+    sigaddset (&oset_copy, SIGTERM);
+
+    /* Block SIGTERM here and unblock in child after fork resets the
+       set of pending signals. */
+    sigemptyset (&set);
+    sigaddset (&set, SIGCHLD);
+    sigaddset (&set, SIGINT);
+    sigaddset (&set, SIGTERM);
+
+    sigemptyset (&oset);
+    sigprocmask (SIG_BLOCK, &set, &oset);
+
+    /* Blocked in the parent, child will receive it after unblocking SIGTERM */
+    if (interactive_shell) {
+        oterm = set_signal_handler (SIGTERM, SIG_DFL);
+    }
+
+    making_children ();
+
+    async_p = (flags & FORK_ASYNC);
+    forksleep = 1;
+
+#if defined (BUFFERED_INPUT)
+    /* If default_buffered_input is active, we are reading a script.  If
+       the command is asynchronous, we have already duplicated /dev/null
+       as fd 0, but have not changed the buffered stream corresponding to
+       the old fd 0.  We don't want to sync the stream in this case. */
+    if (default_buffered_input != -1 &&
+            (!async_p || default_buffered_input > 0)) {
+        sync_buffered_stream (default_buffered_input);
+    }
+#endif /* BUFFERED_INPUT */
+
+    struct nofork_child_args *arg = (struct nofork_child_args *)calloc(1,
+                                    sizeof(struct nofork_child_args));
+    arg->async = async_p;
+    // arg.flags = flags;
+    arg->command_str = strdup(command);
+    arg->cmd_list = (void *)cmd_list;
+    arg->pipe_in = pipe_in;
+    arg->pipe_out = pipe_out;
+    // pthread_t tid = 0;
+    itrace("func: %s, execute %s in new bash", __func__, arg->command_str);
+    int new_pid = children_routine_for_pipe_cmd((void *) arg);
+    // pthread_join(tid, (void **)&new_pid);
+    itrace("%s child thread spawn new process [%d] executing: %s", __func__, new_pid,
+           arg->command_str);
+    // assert(pthread_ret == 0);
+    pid = new_pid;
+    free(arg);
+
+    // if (pid != 0)
+    //   if (interactive_shell)
+    //     set_signal_handler (SIGTERM, oterm);
+
+    if (pid < 0) {
+        sys_error ("fork");
+
+        /* Kill all of the processes in the current pipeline. */
+        terminate_current_pipeline ();
+
+        /* Discard the current pipeline, if any. */
+        if (the_pipeline) {
+            kill_current_pipeline ();
+        }
+
+        set_exit_status (EX_NOEXEC);
+        throw_to_top_level ();	/* Reset signals, etc. */
+    }
+
+    /* In the parent.  Remember the pid of the child just created
+    as the proper pgrp if this is the first child. */
+
+    if (job_control) {
+        if (pipeline_pgrp == 0) {
+            pipeline_pgrp = pid;
+            /* Don't twiddle terminal pgrps in the parent!  This is the bug,
+            not the good thing of twiddling them in the child! */
+            /* give_terminal_to (pipeline_pgrp, 0); */
+        }
+        /* This is done on the recommendation of the Rationale section of
+           the POSIX 1003.1 standard, where it discusses job control and
+           shells.  It is done to avoid possible race conditions. (Ref.
+           1003.1 Rationale, section B.4.3.3, page 236). */
+        setpgid (pid, pipeline_pgrp);
+    } else {
+        if (pipeline_pgrp == 0) {
+            pipeline_pgrp = shell_pgrp;
+        }
+    }
+
+    /* Place all processes into the jobs array regardless of the
+    state of job_control. */
+    // add_process (command, pid);
+
+    if (async_p) {
+        last_asynchronous_pid = pid;
+    }
+#if defined (RECYCLES_PIDS)
+    else if (last_asynchronous_pid == pid)
+        /* Avoid pid aliasing.  1 seems like a safe, unusual pid value. */
+    {
+        last_asynchronous_pid = 1;
+    }
+#endif
+
+    /* Delete the saved status for any job containing this PID in case it's
+    been reused. */
+    delete_old_job (pid); // skip this and bgp delete
+
+    /* Perform the check for pid reuse unconditionally.  Some systems reuse
+    PIDs before giving a process CHILD_MAX/_SC_CHILD_MAX unique ones. */
+    bgp_delete (pid);		/* new process, discard any saved status */
+
+    last_made_pid = new_pid;
+
+    /* keep stats */
+    js.c_totforked++;
+    js.c_living++;
+
+    /* Unblock SIGTERM, SIGINT, and SIGCHLD unless creating a pipeline, in
+    which case SIGCHLD remains blocked until all commands in the pipeline
+     have been created (execute_cmd.c:execute_pipeline()). */
+    sigprocmask (SIG_SETMASK, &oset, (sigset_t *)NULL);
+
+    return (new_pid);
+}
+
+static int children_routine_for_subshell (struct nofork_child_args *recv_args) {
+    // struct nofork_child_args *recv_args = (struct nofork_child_args *)args;
+    char *command = recv_args->command_str;
+    int pipe_in = recv_args->pipe_in;
+    int pipe_out = recv_args->pipe_out;
+
+    // strip the subshell "()" symbol
+    int cmd_len = strlen(command) - 2;
+    command[cmd_len] = 0;
+    command = &command[2];
+    itrace("child_thread [%ld] for subshell will execute: %s",
+           syscall(SYS_gettid),
+           command);
+
+    // It's better to call to parse_and_execute but we can hardly jump there without messing this process
+    int ret = 0;
+    pid_t mypid;
+
+    // generate a tmp file name which must be under the same diretory with the actual script file
+    char subshell_script[PATH_MAX] = {0};
+    strncpy(subshell_script, shell_script_dir_path, strlen(shell_script_dir_path));
+    strncat(subshell_script, "/", 1);
+    strncat(subshell_script, tmp_file_template, strlen(tmp_file_template));
+    // generate a tmp file name and open
+    int fd = mkstemp(subshell_script);
+    itrace("create tmp file: %s\n", subshell_script);
+    if (fd == 0) {
+        itrace("create tmp file %s failed\n", subshell_script);
+        exit(1);
+    }
+    size_t len = write(fd, command, strlen(command));
+    if (len <= 0) {
+        itrace("write tmp file %s failed\n", subshell_script);
+        exit(1);
+    }
+    close(fd);
+
+    char bash_bin[PATH_MAX] = {0};
+    readlink("/proc/self/exe", bash_bin, PATH_MAX);
+    itrace("command substitute spawn new bash at %s", bash_bin);
+    char *argv[] = {"bash", subshell_script, NULL};
+    // as this is command substitution, we must export all local variables to new spawned bash process
+    char **current_env = make_env_array_from_var_list(all_visible_variables());
+    ret = posix_spawn(&mypid, bash_bin, NULL, NULL, argv,
+                      current_env);
+    if (ret != 0) {
+        itrace("posix_spawn error code = %d\n", errno);
+        exit(errno);
+    }
+
+    waitpid(mypid, &ret, 0);
+    // add_process(command, mypid);
+    // recv_args->ret = mypid;
+    unlink(subshell_script);
+    itrace("bash new process [%d] ends with %d\n", mypid, ret);
+    return mypid;
+}
+
+pthread_t make_child_without_fork_for_subshell(command, flags, pipe_in, pipe_out)
+char *command;
+int flags;
+int pipe_in;
+int pipe_out;
+{
+    int async_p, forksleep;
+    sigset_t set, oset, termset, chldset, oset_copy;
+    pid_t pid;
+    SigHandler *oterm;
+    char stack[1024 + PATH_MAX];
+
+    sigemptyset (&oset_copy);
+    sigprocmask (SIG_BLOCK, (sigset_t *)NULL, &oset_copy);
+    sigaddset (&oset_copy, SIGTERM);
+
+    /* Block SIGTERM here and unblock in child after fork resets the
+       set of pending signals. */
+    sigemptyset (&set);
+    sigaddset (&set, SIGCHLD);
+    sigaddset (&set, SIGINT);
+    sigaddset (&set, SIGTERM);
+
+    sigemptyset (&oset);
+    sigprocmask (SIG_BLOCK, &set, &oset);
+
+    /* Blocked in the parent, child will receive it after unblocking SIGTERM */
+    if (interactive_shell) {
+        oterm = set_signal_handler (SIGTERM, SIG_DFL);
+    }
+
+    making_children ();
+
+    async_p = (flags & FORK_ASYNC);
+    forksleep = 1;
+
+#if defined (BUFFERED_INPUT)
+    /* If default_buffered_input is active, we are reading a script.  If
+       the command is asynchronous, we have already duplicated /dev/null
+       as fd 0, but have not changed the buffered stream corresponding to
+       the old fd 0.  We don't want to sync the stream in this case. */
+    if (default_buffered_input != -1 &&
+            (!async_p || default_buffered_input > 0)) {
+        sync_buffered_stream (default_buffered_input);
+    }
+#endif /* BUFFERED_INPUT */
+
+    struct nofork_child_args *arg = (struct nofork_child_args *)calloc(1,
+                                    sizeof(struct nofork_child_args));
+    arg->async = async_p;
+    // arg->flags = flags;
+    arg->command_str = command;
+    // arg.cmd_list = cmd_list;
+    arg->pipe_in = pipe_in;
+    arg->pipe_out = pipe_out;
+    pthread_t tid = 0;
+    itrace("func: %s, execute %s in new bash", __func__, arg->command_str);
+    /* Create the child, handle severe errors.  Retry on EAGAIN. */
+    int new_pid = children_routine_for_subshell(arg);
+    // pthread_join(tid, (void **)&new_pid);
+    itrace("%s child thread spawn new process [%d] executing: %s", __func__, new_pid,
+           arg->command_str);
+    // assert(pthread_ret == 0);
+    pid = new_pid;
+    free(arg);
+
+    // if (pid != 0)
+    //   if (interactive_shell)
+    //     set_signal_handler (SIGTERM, oterm);
+
+    if (pid < 0) {
+        sys_error ("fork");
+
+        /* Kill all of the processes in the current pipeline. */
+        terminate_current_pipeline ();
+
+        /* Discard the current pipeline, if any. */
+        if (the_pipeline) {
+            kill_current_pipeline ();
+        }
+
+        set_exit_status (EX_NOEXEC);
+        throw_to_top_level ();	/* Reset signals, etc. */
+    }
+
+    /* In the parent.  Remember the pid of the child just created
+    as the proper pgrp if this is the first child. */
+
+    if (job_control) {
+        if (pipeline_pgrp == 0) {
+            pipeline_pgrp = pid;
+            /* Don't twiddle terminal pgrps in the parent!  This is the bug,
+            not the good thing of twiddling them in the child! */
+            /* give_terminal_to (pipeline_pgrp, 0); */
+        }
+        /* This is done on the recommendation of the Rationale section of
+           the POSIX 1003.1 standard, where it discusses job control and
+           shells.  It is done to avoid possible race conditions. (Ref.
+           1003.1 Rationale, section B.4.3.3, page 236). */
+        setpgid (pid, pipeline_pgrp);
+    } else {
+        if (pipeline_pgrp == 0) {
+            pipeline_pgrp = shell_pgrp;
+        }
+    }
+
+    /* Place all processes into the jobs array regardless of the
+    state of job_control. */
+    // add_process (command, pid);
+
+    if (async_p) {
+        last_asynchronous_pid = pid;
+    }
+#if defined (RECYCLES_PIDS)
+    else if (last_asynchronous_pid == pid)
+        /* Avoid pid aliasing.  1 seems like a safe, unusual pid value. */
+    {
+        last_asynchronous_pid = 1;
+    }
+#endif
+
+    /* Delete the saved status for any job containing this PID in case it's
+    been reused. */
+    // delete_old_job (pid); // skip this and bgp delete
+
+    /* Perform the check for pid reuse unconditionally.  Some systems reuse
+    PIDs before giving a process CHILD_MAX/_SC_CHILD_MAX unique ones. */
+    // bgp_delete (pid);		/* new process, discard any saved status */
+
+    last_made_pid = new_pid;
+
+    /* keep stats */
+    js.c_totforked++;
+    js.c_living++;
+
+    /* Unblock SIGTERM, SIGINT, and SIGCHLD unless creating a pipeline, in
+    which case SIGCHLD remains blocked until all commands in the pipeline
+     have been created (execute_cmd.c:execute_pipeline()). */
+    sigprocmask (SIG_SETMASK, &oset, (sigset_t *)NULL);
+
+    return (new_pid);
+}
+
+static int children_routine_for_process_subst (struct nofork_child_args *recv_args) {
+    // struct nofork_child_args *recv_args = (struct nofork_child_args *)args;
+    char *command = recv_args->command_str;
+    int parent_pipe_fd = recv_args->pipe_in;
+    int child_pipe_fd = recv_args->pipe_out;
+    int open_for_read_in_child = recv_args->open_for_read_in_child;
+    itrace("child_thread [%ld] for process substitution will execute: %s",
+           syscall(SYS_gettid),
+           command);
+
+    // It's better to call to parse_and_execute but we can hardly jump there without messing this process
+    int ret = 0;
+    pid_t mypid;
+    posix_spawn_file_actions_t file_action;
+    posix_spawn_file_actions_init(&file_action);
+
+    // Derived from subst.c: 5975 to manipulate file actions of child pipe
+    // for commands in command substitution, we just need to close read end, and duplicate write end
+    ret = posix_spawn_file_actions_adddup2(&file_action, child_pipe_fd,
+                                           open_for_read_in_child ? 0 : 1);
+    if (ret != 0) {
+        printf("posix_spawn_file_actions_adddup2 failed: %d", errno);
+    }
+
+    if (child_pipe_fd != (open_for_read_in_child ? 0 : 1)) {
+        ret = posix_spawn_file_actions_addclose(&file_action, child_pipe_fd);
+        if (ret != 0) {
+            printf("posix_spawn_file_actions_addclose failed: %d", errno);
+        }
+    }
+
+    ret = posix_spawn_file_actions_addclose(&file_action, parent_pipe_fd);
+    if (ret != 0) {
+        printf("posix_spawn_file_actions_addclose failed: %d", errno);
+    }
+
+    // generate a tmp file name which must be under the same diretory with the actual script file
+    char subshell_script[PATH_MAX] = {0};
+    strncpy(subshell_script, shell_script_dir_path, strlen(shell_script_dir_path));
+    strncat(subshell_script, "/", 1);
+    strncat(subshell_script, tmp_file_template, strlen(tmp_file_template));
+    // generate a tmp file name and open
+    int fd = mkstemp(subshell_script);
+    itrace("create tmp file: %s\n", subshell_script);
+    if (fd == 0) {
+        itrace("create tmp file %s failed\n", subshell_script);
+        exit(1);
+    }
+    SHELL_VAR **shell_functions = all_visible_functions();
+    if (shell_functions != NULL) {
+        print_func_list_to_file(shell_functions, fd);
+    }
+    size_t len = write(fd, command, strlen(command));
+    if (len <= 0) {
+        itrace("write tmp file %s failed\n", subshell_script);
+        exit(1);
+    }
+
+    close(fd);
+
+    char bash_bin[PATH_MAX] = {0};
+    readlink("/proc/self/exe", bash_bin, PATH_MAX);
+    itrace("command substitute spawn new bash at %s", bash_bin);
+    char *argv[ARG_MAX] = {"bash", subshell_script, NULL};
+    int shell_argv = 0;
+    char **shell_args = strvec_from_word_list(list_rest_of_args(), 0, 0, &shell_argv);
+    // printf("append argv:\n");
+    for (int i = 0; i < shell_argv; i++) {
+        argv[2 + i] = shell_args[i];
+        // printf("%s", argv[2+i]);
+    }
+    // as this is command substitution, we must export all local variables to new spawned bash process
+    char **current_env = make_env_array_from_var_list(all_visible_variables());
+    ret = posix_spawn(&mypid, bash_bin, &file_action, NULL, argv,
+                      current_env);
+    if (ret != 0) {
+        itrace("posix_spawn error code = %d\n", errno);
+        exit(errno);
+    }
+    waitpid(mypid, &ret, 0);
+    // add_process(command, mypid);
+    // recv_args->ret = mypid;
+    unlink(subshell_script);
+    itrace("bash new process [%d] ends with %d\n", mypid, ret);
+    return mypid;
+}
+
+// Lack processes after fork
+pthread_t make_child_without_fork_for_process_subst(command, flags, pipe_in, pipe_out,
+        open_for_read_in_child)
+char *command;
+int flags;
+int pipe_in;
+int pipe_out;
+int open_for_read_in_child;
+{
+    int async_p, forksleep;
+    sigset_t set, oset, termset, chldset, oset_copy;
+    pid_t pid;
+    SigHandler *oterm;
+    char stack[1024 + PATH_MAX];
+
+    sigemptyset (&oset_copy);
+    sigprocmask (SIG_BLOCK, (sigset_t *)NULL, &oset_copy);
+    sigaddset (&oset_copy, SIGTERM);
+
+    /* Block SIGTERM here and unblock in child after fork resets the
+       set of pending signals. */
+    sigemptyset (&set);
+    sigaddset (&set, SIGCHLD);
+    sigaddset (&set, SIGINT);
+    sigaddset (&set, SIGTERM);
+
+    sigemptyset (&oset);
+    sigprocmask (SIG_BLOCK, &set, &oset);
+
+    making_children ();
+
+    async_p = (flags & FORK_ASYNC);
+    forksleep = 1;
+
+#if defined (BUFFERED_INPUT)
+    /* If default_buffered_input is active, we are reading a script.  If
+       the command is asynchronous, we have already duplicated /dev/null
+       as fd 0, but have not changed the buffered stream corresponding to
+       the old fd 0.  We don't want to sync the stream in this case. */
+    if (default_buffered_input != -1 &&
+            (!async_p || default_buffered_input > 0)) {
+        sync_buffered_stream (default_buffered_input);
+    }
+#endif /* BUFFERED_INPUT */
+
+    struct nofork_child_args *arg = (struct nofork_child_args *)calloc(1,
+                                    sizeof(struct nofork_child_args));
+    arg->async = async_p;
+    // arg->flags = flags;
+    arg->command_str = command;
+    // arg.cmd_list = cmd_list;
+    arg->pipe_in = pipe_in;
+    arg->pipe_out = pipe_out;
+    arg->open_for_read_in_child = open_for_read_in_child;
+    pthread_t tid = 0;
+    itrace("func: %s, execute %s in new bash", __func__, arg->command_str);
+    /* Create the child, handle severe errors.  Retry on EAGAIN. */
+    int new_pid = children_routine_for_process_subst(arg);
+    // pthread_join(tid, (void **)&new_pid);
+    itrace("%s child thread spawn new process [%d] executing: %s", __func__, new_pid,
+           arg->command_str);
+    // assert(pthread_ret == 0);
+    pid = new_pid;
+    free(arg);
+
+    // if (pid != 0)
+    //   if (interactive_shell)
+    //     set_signal_handler (SIGTERM, oterm);
+
+    if (pid < 0) {
+        sys_error ("fork");
+
+        /* Kill all of the processes in the current pipeline. */
+        terminate_current_pipeline ();
+
+        /* Discard the current pipeline, if any. */
+        if (the_pipeline) {
+            kill_current_pipeline ();
+        }
+
+        set_exit_status (EX_NOEXEC);
+        throw_to_top_level ();	/* Reset signals, etc. */
+    }
+
+    /* In the parent.  Remember the pid of the child just created
+    as the proper pgrp if this is the first child. */
+
+    if (job_control) {
+        if (pipeline_pgrp == 0) {
+            pipeline_pgrp = pid;
+            /* Don't twiddle terminal pgrps in the parent!  This is the bug,
+            not the good thing of twiddling them in the child! */
+            /* give_terminal_to (pipeline_pgrp, 0); */
+        }
+        /* This is done on the recommendation of the Rationale section of
+           the POSIX 1003.1 standard, where it discusses job control and
+           shells.  It is done to avoid possible race conditions. (Ref.
+           1003.1 Rationale, section B.4.3.3, page 236). */
+        setpgid (pid, pipeline_pgrp);
+    } else {
+        if (pipeline_pgrp == 0) {
+            pipeline_pgrp = shell_pgrp;
+        }
+    }
+
+    /* Place all processes into the jobs array regardless of the
+    state of job_control. */
+    // add_process (command, pid);
+
+    if (async_p) {
+        last_asynchronous_pid = pid;
+    }
+#if defined (RECYCLES_PIDS)
+    else if (last_asynchronous_pid == pid)
+        /* Avoid pid aliasing.  1 seems like a safe, unusual pid value. */
+    {
+        last_asynchronous_pid = 1;
+    }
+#endif
+
+    /* Delete the saved status for any job containing this PID in case it's
+    been reused. */
+    // delete_old_job (pid); // skip this and bgp delete
+
+    /* Perform the check for pid reuse unconditionally.  Some systems reuse
+    PIDs before giving a process CHILD_MAX/_SC_CHILD_MAX unique ones. */
+    // bgp_delete (pid);		/* new process, discard any saved status */
+
+    last_made_pid = new_pid;
+
+    /* keep stats */
+    js.c_totforked++;
+    js.c_living++;
+
+    /* Unblock SIGTERM, SIGINT, and SIGCHLD unless creating a pipeline, in
+    which case SIGCHLD remains blocked until all commands in the pipeline
+     have been created (execute_cmd.c:execute_pipeline()). */
+    sigprocmask (SIG_SETMASK, &oset, (sigset_t *)NULL);
+
+    return (new_pid);
+}

@@ -309,7 +309,6 @@ static void propagate_temp_var PARAMS((PTR_T));
 static void dispose_temporary_env PARAMS((sh_free_func_t *));
 
 static inline char *mk_env_string PARAMS((const char *, const char *, int));
-static char **make_env_array_from_var_list PARAMS((SHELL_VAR **));
 static char **make_var_export_array PARAMS((VAR_CONTEXT *));
 static char **make_func_export_array PARAMS((void));
 static void add_temp_array_to_env PARAMS((char **, int, int));
@@ -1036,6 +1035,32 @@ register SHELL_VAR **list;
         print_var_function (var);
         printf ("\n");
     }
+}
+
+void
+print_func_list_to_file (list, fd)
+register SHELL_VAR **list;
+int fd;
+{
+    register int i;
+    register SHELL_VAR *var;
+
+    int saved_stdout = dup(STDOUT_FILENO);
+    if (dup2(fd, STDOUT_FILENO) == -1) {
+        perror("dup2 failed");
+        exit(1);
+    }
+
+    for (i = 0; list && (var = list[i]); i++) {
+        printf ("%s ", var->name);
+        print_var_function (var);
+        printf ("\n");
+    }
+
+    // restore stdout
+    dup2(saved_stdout, STDOUT_FILENO);
+    fflush(stdout);
+    close(saved_stdout);
 }
 
 /* Print the value of a single SHELL_VAR.  No newline is
@@ -4815,7 +4840,7 @@ SHELL_VAR *v;
 }
 #endif
 
-static char **
+char **
 make_env_array_from_var_list (vars)
 SHELL_VAR **vars;
 {
@@ -4891,7 +4916,7 @@ SHELL_VAR **vars;
 /* Make an array of assignment statements from the hash table
    HASHED_VARS which contains SHELL_VARs.  Only visible, exported
    variables are eligible. */
-static char **
+char **
 make_var_export_array (vcxt)
 VAR_CONTEXT *vcxt;
 {

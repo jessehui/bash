@@ -5823,7 +5823,13 @@ int open_for_read_in_child;
     save_pipeline (1);
 #endif /* JOB_CONTROL */
 
-    pid = make_child ((char *)NULL, FORK_ASYNC);
+    // if original
+    // pid = make_child ((char *)NULL, FORK_ASYNC);
+    // else no-fork
+    pid = getpid();
+    pthread_t pthid = make_child_without_fork_for_process_subst(string, FORK_ASYNC,
+                      parent_pipe_fd, child_pipe_fd, open_for_read_in_child);
+
     if (pid == 0) {
 #if 0
         int old_interactive;
@@ -5883,13 +5889,13 @@ int open_for_read_in_child;
     }
 
     if (pid > 0) {
-#if defined (JOB_CONTROL)
-        last_procsub_child = restore_pipeline (0);
-        /* We assume that last_procsub_child->next == last_procsub_child because
-        of how jobs.c:add_process() works. */
-        last_procsub_child->next = 0;
-        procsub_add (last_procsub_child);
-#endif
+// #if defined (JOB_CONTROL)
+//         last_procsub_child = restore_pipeline (0);
+//         /* We assume that last_procsub_child->next == last_procsub_child because
+//         of how jobs.c:add_process() works. */
+//         last_procsub_child->next = 0;
+//         procsub_add (last_procsub_child);
+// #endif
 
 #if defined (HAVE_DEV_FD)
         dev_fd_list[parent_pipe_fd] = pid;
@@ -6190,6 +6196,7 @@ char *string;
 int quoted;
 int flags;
 {
+    itrace("function: %s", __func__);
     pid_t pid, old_pid, old_pipeline_pgrp, old_async_pid;
     char *istring, *s;
     int result, fildes[2], function_value, pflags, rc, tflag, fork_flags;
@@ -6254,7 +6261,15 @@ int flags;
 
     old_async_pid = last_asynchronous_pid;
     fork_flags = (subshell_environment & SUBSHELL_ASYNC) ? FORK_ASYNC : 0;
-    pid = make_child ((char *)NULL, fork_flags | FORK_NOTERM);
+
+    // original
+    // pid = make_child ((char *)NULL, fork_flags | FORK_NOTERM);
+
+    // no-fork
+    pid = getpid();
+    pthread_t pthid = make_child_without_fork_for_subst(string, fork_flags | FORK_NOTERM,
+                      fildes[0], fildes[1]);
+
     last_asynchronous_pid = old_async_pid;
 
     if (pid == 0) {
@@ -6423,7 +6438,12 @@ error_exit:
         UNBLOCK_SIGNAL (oset);
 
         current_command_subst_pid = pid;
-        last_command_exit_value = wait_for (pid, JWAIT_NOTERM);
+
+        // original
+        // last_command_exit_value = wait_for (pid, JWAIT_NOTERM);
+        // no fork
+        last_command_exit_value = 0;
+
         last_command_subst_pid = pid;
         last_made_pid = old_pid;
 

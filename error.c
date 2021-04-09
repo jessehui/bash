@@ -401,6 +401,7 @@ const char *format;
 va_dcl
 #endif
 {
+#ifndef NO_LOG
     va_list args;
 
     fprintf(stderr, "TRACE: pid %ld: ", (long)getpid());
@@ -413,6 +414,7 @@ va_dcl
     va_end (args);
 
     fflush(stderr);
+#endif
 }
 
 /* A trace function for silent debugging -- doesn't require a control

@@ -3390,7 +3390,7 @@ scan_request(char *c) {
                 }
                 out_html(NEWLINE);
                 mandoc_bd_options = 0;	/* Remember options for
-			 * terminating Bl */
+* terminating Bl */
                 if (strstr(bd_options, "-offset indent")) {
                     mandoc_bd_options |= BD_INDENT;
                     out_html("<BLOCKQUOTE>\n");
@@ -3747,7 +3747,7 @@ scan_request(char *c) {
                     			 * as a special case -
                     			 * Bummer! */
                     static int count = 0;	/* Don't break on the
-				 * first Nm */
+ * first Nm */
 
                     if (count) {
                         out_html("<BR>");

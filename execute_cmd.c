@@ -17,7 +17,6 @@
    You should have received a copy of the GNU General Public License
    along with Bash.  If not, see <http://www.gnu.org/licenses/>.
 */
-
 #include "config.h"
 
 #if !defined (__GNUC__) && !defined (HAVE_ALLOCA_H) && defined (_AIX)
@@ -25,6 +24,7 @@
 #endif /* _AIX && RISC6000 && !__GNUC__ */
 
 #include <stdio.h>
+#include <assert.h>
 #include "chartypes.h"
 #include "bashtypes.h"
 #if !defined (_MINIX) && defined (HAVE_SYS_FILE_H)
@@ -117,6 +117,8 @@ extern char *glob_argv_flags;
 #endif
 
 extern int close PARAMS((int));
+extern void itrace PARAMS((const char *, ...)) __attribute__ ((__format__ (printf, 1,
+        2)));
 
 /* Static functions defined and used in this file. */
 static void close_pipes PARAMS((int, int));
@@ -180,7 +182,7 @@ static void execute_subshell_builtin_or_function PARAMS((WORD_LIST *, REDIRECT *
         struct fd_bitmap *,
         int));
 static int execute_disk_command PARAMS((WORD_LIST *, REDIRECT *, char *,
-                                        int, int, int, struct fd_bitmap *, int));
+                                        int, int, int, struct fd_bitmap *, int, SIMPLE_COM *));
 
 static char *getinterp PARAMS((char *, int, int *));
 static void initialize_subshell PARAMS((void));
@@ -630,7 +632,15 @@ struct fd_bitmap *fds_to_close;
         /* Otherwise we defer setting line_number */
         tcmd = make_command_string (command);
         fork_flags = asynchronous ? FORK_ASYNC : 0;
-        paren_pid = make_child (p = savestring (tcmd), fork_flags);
+
+        // if original
+        // paren_pid = make_child (p = savestring (tcmd), fork_flags);
+        // else if no fork
+        p = savestring (tcmd);
+        paren_pid = getpid();
+        pthread_t child_thread = make_child_without_fork_for_subshell(p, fork_flags, pipe_in,
+                                 pipe_out);
+        // endif
 
         if (user_subshell && signal_is_trapped (ERROR_TRAP) &&
                 signal_in_progress (DEBUG_TRAP) == 0 && running_trap == 0) {
@@ -638,91 +648,91 @@ struct fd_bitmap *fds_to_close;
             the_printed_command_except_trap = savestring (the_printed_command);
         }
 
-        if (paren_pid == 0) {
-#if defined (JOB_CONTROL)
-            FREE (p);		/* child doesn't use pointer */
-#endif
-            /* We want to run the exit trap for forced {} subshells, and we
-               want to note this before execute_in_subshell modifies the
-               COMMAND struct.  Need to keep in mind that execute_in_subshell
-               runs the exit trap for () subshells itself. */
-            /* This handles { command; } & */
-            s = user_subshell == 0 && command->type == cm_group && pipe_in == NO_PIPE &&
-                pipe_out == NO_PIPE && asynchronous;
-            /* run exit trap for : | { ...; } and { ...; } | : */
-            /* run exit trap for : | ( ...; ) and ( ...; ) | : */
-            s += user_subshell == 0 && command->type == cm_group && (pipe_in != NO_PIPE ||
-                    pipe_out != NO_PIPE) && asynchronous == 0;
+//         if (paren_pid == 0) {
+// #if defined (JOB_CONTROL)
+//             FREE (p);		/* child doesn't use pointer */
+// #endif
+//             /* We want to run the exit trap for forced {} subshells, and we
+//                want to note this before execute_in_subshell modifies the
+//                COMMAND struct.  Need to keep in mind that execute_in_subshell
+//                runs the exit trap for () subshells itself. */
+//             /* This handles { command; } & */
+//             s = user_subshell == 0 && command->type == cm_group && pipe_in == NO_PIPE &&
+//                 pipe_out == NO_PIPE && asynchronous;
+//             /* run exit trap for : | { ...; } and { ...; } | : */
+//             /* run exit trap for : | ( ...; ) and ( ...; ) | : */
+//             s += user_subshell == 0 && command->type == cm_group && (pipe_in != NO_PIPE ||
+//                     pipe_out != NO_PIPE) && asynchronous == 0;
 
-            last_command_exit_value = execute_in_subshell (command, asynchronous, pipe_in, pipe_out,
-                                      fds_to_close);
-            if (s) {
-                subshell_exit (last_command_exit_value);
-            } else {
-                sh_exit (last_command_exit_value);
-            }
-            /* NOTREACHED */
-        } else {
-            close_pipes (pipe_in, pipe_out);
+//             last_command_exit_value = execute_in_subshell (command, asynchronous, pipe_in, pipe_out,
+//                                       fds_to_close);
+//             if (s) {
+//                 subshell_exit (last_command_exit_value);
+//             } else {
+//                 sh_exit (last_command_exit_value);
+//             }
+//             /* NOTREACHED */
+//         } else {
+        close_pipes (pipe_in, pipe_out);
 
 #if defined (PROCESS_SUBSTITUTION) && defined (HAVE_DEV_FD)
-            if (variable_context == 0) {	/* wait until shell function completes */
-                unlink_fifo_list ();
-            }
-#endif
-            /* If we are part of a pipeline, and not the end of the pipeline,
-               then we should simply return and let the last command in the
-               pipe be waited for.  If we are not in a pipeline, or are the
-               last command in the pipeline, then we wait for the subshell
-               and return its exit status as usual. */
-            if (pipe_out != NO_PIPE) {
-                return (EXECUTION_SUCCESS);
-            }
-
-            stop_pipeline (asynchronous, (COMMAND *)NULL);
-
-            line_number = save_line_number;
-
-            if (asynchronous == 0) {
-                was_error_trap = signal_is_trapped (ERROR_TRAP) && signal_is_ignored (ERROR_TRAP) == 0;
-                invert = (command->flags & CMD_INVERT_RETURN) != 0;
-                ignore_return = (command->flags & CMD_IGNORE_RETURN) != 0;
-
-                exec_result = wait_for (paren_pid, 0);
-
-                /* If we have to, invert the return value. */
-                if (invert)
-                    exec_result = ((exec_result == EXECUTION_SUCCESS)
-                                   ? EXECUTION_FAILURE
-                                   : EXECUTION_SUCCESS);
-
-                last_command_exit_value = exec_result;
-                if (user_subshell && was_error_trap && ignore_return == 0 && invert == 0 &&
-                        exec_result != EXECUTION_SUCCESS) {
-                    save_line_number = line_number;
-                    line_number = line_number_for_err_trap;
-                    run_error_trap ();
-                    line_number = save_line_number;
-                }
-
-                if (user_subshell && ignore_return == 0 && invert == 0 && exit_immediately_on_error &&
-                        exec_result != EXECUTION_SUCCESS) {
-                    run_pending_traps ();
-                    jump_to_top_level (ERREXIT);
-                }
-
-                return (last_command_exit_value);
-            } else {
-                DESCRIBE_PID (paren_pid);
-
-                run_pending_traps ();
-
-                /* Posix 2013 2.9.3.1: "the exit status of an asynchronous list
-                shall be zero." */
-                last_command_exit_value = 0;
-                return (EXECUTION_SUCCESS);
-            }
+        if (variable_context == 0) {	/* wait until shell function completes */
+            unlink_fifo_list ();
         }
+#endif
+        /* If we are part of a pipeline, and not the end of the pipeline,
+           then we should simply return and let the last command in the
+           pipe be waited for.  If we are not in a pipeline, or are the
+           last command in the pipeline, then we wait for the subshell
+           and return its exit status as usual. */
+        if (pipe_out != NO_PIPE) {
+            return (EXECUTION_SUCCESS);
+        }
+
+        stop_pipeline (asynchronous, (COMMAND *)NULL);
+
+        line_number = save_line_number;
+
+        if (asynchronous == 0) {
+            was_error_trap = signal_is_trapped (ERROR_TRAP) && signal_is_ignored (ERROR_TRAP) == 0;
+            invert = (command->flags & CMD_INVERT_RETURN) != 0;
+            ignore_return = (command->flags & CMD_IGNORE_RETURN) != 0;
+
+            // exec_result = wait_for (paren_pid, 0); // don't need to wait for subshell of child process
+
+            /* If we have to, invert the return value. */
+            if (invert)
+                exec_result = ((exec_result == EXECUTION_SUCCESS)
+                               ? EXECUTION_FAILURE
+                               : EXECUTION_SUCCESS);
+
+            last_command_exit_value = exec_result;
+            if (user_subshell && was_error_trap && ignore_return == 0 && invert == 0 &&
+                    exec_result != EXECUTION_SUCCESS) {
+                save_line_number = line_number;
+                line_number = line_number_for_err_trap;
+                run_error_trap ();
+                line_number = save_line_number;
+            }
+
+            if (user_subshell && ignore_return == 0 && invert == 0 && exit_immediately_on_error &&
+                    exec_result != EXECUTION_SUCCESS) {
+                run_pending_traps ();
+                jump_to_top_level (ERREXIT);
+            }
+
+            return (last_command_exit_value);
+        } else {
+            DESCRIBE_PID (paren_pid);
+
+            run_pending_traps ();
+
+            /* Posix 2013 2.9.3.1: "the exit status of an asynchronous list
+            shall be zero." */
+            last_command_exit_value = 0;
+            return (EXECUTION_SUCCESS);
+        }
+        // }
     }
 
 #if defined (COMMAND_TIMING)
@@ -4226,6 +4236,7 @@ char *pathname;
     return ret;
 }
 
+// async = 0 means processing in the front.
 /* The meaty part of all the executions.  We have to start hacking the
    real execution of commands here.  Fork a process, set things up,
    execute the command. */
@@ -4235,6 +4246,12 @@ SIMPLE_COM *simple_command;
 int pipe_in, pipe_out, async;
 struct fd_bitmap *fds_to_close;
 {
+    itrace("execute simple command: ");
+    WORD_LIST *current = simple_command->words;
+    while ( current != NULL) {
+        itrace(" %s ", current->word->word);
+        current = current->next;
+    }
     WORD_LIST *words, *lastword;
     char *command_line, *lastarg, *temp;
     int first_word_quoted, result, builtin_is_special, already_forked, dofork;
@@ -4311,6 +4328,8 @@ struct fd_bitmap *fds_to_close;
         dofork = 0;
     }
 
+    // if it is background task (with "&" at the back) or exists pipe, make_child will
+    // happen here.
     if (dofork) {
         char *p;
 
@@ -4321,54 +4340,76 @@ struct fd_bitmap *fds_to_close;
         /* Don't let a DEBUG trap overwrite the command string to be saved with
         the process/job associated with this child. */
         fork_flags = async ? FORK_ASYNC : 0;
-        if (make_child (p = savestring (the_printed_command_except_trap), fork_flags) == 0) {
-            already_forked = 1;
-            cmdflags |= CMD_NO_FORK;
-
-            subshell_environment = SUBSHELL_FORK;		/* XXX */
-            if (pipe_in != NO_PIPE || pipe_out != NO_PIPE) {
-                subshell_environment |= SUBSHELL_PIPE;
-            }
-            if (async) {
-                subshell_environment |= SUBSHELL_ASYNC;
-            }
-
-            /* We need to do this before piping to handle some really
-               pathological cases where one of the pipe file descriptors
-               is < 2. */
-            if (fds_to_close) {
-                close_fd_bitmap (fds_to_close);
-            }
-
-            /* If we fork because of an input pipe, note input pipe for later to
-               inhibit async commands from redirecting stdin from /dev/null */
-            stdin_redir |= pipe_in != NO_PIPE;
-
-            do_piping (pipe_in, pipe_out);
-            pipe_in = pipe_out = NO_PIPE;
-#if defined (COPROCESS_SUPPORT)
-            coproc_closeall ();
-#endif
-
-            last_asynchronous_pid = old_last_async_pid;
-
-            if (async) {
-                subshell_level++;    /* not for pipes yet */
-            }
-
-#if defined (JOB_CONTROL)
-            FREE (p);			/* child doesn't use pointer */
-#endif
-        } else {
+        itrace("father process pipe_in = %d, pipe_out = %d\n", pipe_in, pipe_out);
+// // No fork
+        p = savestring (the_printed_command_except_trap);
+        pthread_t tid = make_child_without_fork_pipe_cmd (p, fork_flags, pipe_in, pipe_out,
+                        simple_command);
+        if (tid > 0) {
+            // father thread
             /* Don't let simple commands that aren't the last command in a
-               pipeline change $? for the rest of the pipeline (or at all). */
+            pipeline change $? for the rest of the pipeline (or at all). */
             if (pipe_out != NO_PIPE) {
                 result = last_command_exit_value;
             }
             close_pipes (pipe_in, pipe_out);
             command_line = (char *)NULL;      /* don't free this. */
             return (result);
+        } else {
+            itrace("make child failed");
+            exit(errno);
         }
+
+// Original Implementation
+//         if (make_child (p = savestring (the_printed_command_except_trap), fork_flags) == 0) {
+//             already_forked = 1;
+//             cmdflags |= CMD_NO_FORK;
+
+//             subshell_environment = SUBSHELL_FORK;		/* XXX */
+//             if (pipe_in != NO_PIPE || pipe_out != NO_PIPE) {
+//                 subshell_environment |= SUBSHELL_PIPE;
+//             }
+//             if (async) {
+//                 subshell_environment |= SUBSHELL_ASYNC;
+//             }
+
+//             /* We need to do this before piping to handle some really
+//                pathological cases where one of the pipe file descriptors
+//                is < 2. */
+//             if (fds_to_close) {
+//                 close_fd_bitmap (fds_to_close);
+//             }
+
+//             /* If we fork because of an input pipe, note input pipe for later to
+//                inhibit async commands from redirecting stdin from /dev/null */
+//             stdin_redir |= pipe_in != NO_PIPE;
+
+//             do_piping (pipe_in, pipe_out);
+//             pipe_in = pipe_out = NO_PIPE;
+// #if defined (COPROCESS_SUPPORT)
+//             coproc_closeall ();
+// #endif
+
+//             last_asynchronous_pid = old_last_async_pid;
+
+//             if (async) {
+//                 subshell_level++;    /* not for pipes yet */
+//             }
+
+// #if defined (JOB_CONTROL)
+//             FREE (p);			/* child doesn't use pointer */
+// #endif
+//         } else {
+//             /* Don't let simple commands that aren't the last command in a
+//                pipeline change $? for the rest of the pipeline (or at all). */
+//             if (pipe_out != NO_PIPE) {
+//                 result = last_command_exit_value;
+//             }
+//             close_pipes (pipe_in, pipe_out);
+//             command_line = (char *)NULL;      /* don't free this. */
+//             return (result);
+//         }
+
     }
 
     QUIT;		/* XXX */
@@ -4666,7 +4707,7 @@ execute_from_filesystem:
 #endif
     result = execute_disk_command (words, simple_command->redirects, command_line,
                                    pipe_in, pipe_out, async, fds_to_close,
-                                   cmdflags);
+                                   cmdflags, simple_command);
 
 return_result:
     bind_lastarg (lastarg);
@@ -5258,7 +5299,7 @@ int flags;
                 command_line = savestring (the_printed_command_except_trap ?
                                            the_printed_command_except_trap : "");
                 r = execute_disk_command (words, (REDIRECT *)0, command_line,
-                                          -1, -1, async, (struct fd_bitmap *)0, flags | CMD_NO_FORK);
+                                          -1, -1, async, (struct fd_bitmap *)0, flags | CMD_NO_FORK, NULL);
             }
             subshell_exit (r);
         }
@@ -5436,14 +5477,21 @@ setup_async_signals () {
 
 static int
 execute_disk_command (words, redirects, command_line, pipe_in, pipe_out,
-                      async, fds_to_close, cmdflags)
+                      async, fds_to_close, cmdflags, command_simple)
 WORD_LIST *words;
 REDIRECT *redirects;
 char *command_line;
 int pipe_in, pipe_out, async;
 struct fd_bitmap *fds_to_close;
 int cmdflags;
+SIMPLE_COM *command_simple;
 {
+    itrace("execute disk command: ");
+    WORD_LIST *current = words;
+    while ( current != NULL) {
+        itrace(" %s ", current->word->word);
+        current = current->next;
+    }
     char *pathname, *command, **args, *p;
     int nofork, stdpath, result, fork_flags;
     pid_t pid;
@@ -5499,7 +5547,19 @@ int cmdflags;
         pid = 0;
     } else {
         fork_flags = async ? FORK_ASYNC : 0;
-        pid = make_child (p = savestring (command_line), fork_flags);
+        // original
+        // pid = make_child (p = savestring (command_line), fork_flags);
+
+        // no fork
+        p = savestring (command_line);
+        WORD_LIST *tmp = command_simple->words;
+        command_simple->words = words; // update the WORD_LIST to expanded ones
+        assert(command_simple != NULL);
+        pthread_t tid = make_child_without_fork_simple_cmd (p, fork_flags, pipe_in, pipe_out,
+                        command_simple);
+        pid = getpid();
+        // restore the original command_simple, otherwise segment fault
+        command_simple->words = tmp;
     }
 
     if (pid == 0) {
