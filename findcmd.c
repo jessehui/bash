@@ -253,7 +253,26 @@ char *
 find_path_file (name)
      const char *name;
 {
-  return (find_user_command_internal (name, FS_READABLE));
+    char *ret = (find_user_command_internal (name, FS_READABLE));
+    // itrace("command path at %p in %s", ret, __func__);
+    return ret;
+}
+
+char *
+find_path_file_safe (name, buf)
+const char *name;
+char *buf;
+{
+    char *ret = (find_user_command_internal (name, FS_EXISTS));
+    // ret = strdup(ret);
+    if (ret == NULL) {
+        return NULL;
+    }
+    strcpy(buf, ret);
+    #if defined (DEBUG)
+      itrace("command path = %llxd in %s", (size_t)buf, __func__);
+    #endif
+    return buf;
 }
 
 static char *

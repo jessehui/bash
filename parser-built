@@ -48,8 +48,7 @@ extern int yydebug;
 /* Token kinds.  */
 #ifndef YYTOKENTYPE
 # define YYTOKENTYPE
-  enum yytokentype
-  {
+enum yytokentype {
     YYEMPTY = -2,
     YYEOF = 0,                     /* "end of file"  */
     YYerror = 256,                 /* error  */
@@ -101,8 +100,8 @@ extern int yydebug;
     GREATER_BAR = 302,             /* GREATER_BAR  */
     BAR_AND = 303,                 /* BAR_AND  */
     yacc_EOF = 304                 /* yacc_EOF  */
-  };
-  typedef enum yytokentype yytoken_kind_t;
+};
+typedef enum yytokentype yytoken_kind_t;
 #endif
 /* Token kinds.  */
 #define YYEOF 0
@@ -158,17 +157,16 @@ extern int yydebug;
 
 /* Value type.  */
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
-union YYSTYPE
-{
+union YYSTYPE {
 #line 328 "/Users/chet/src/bash/src/parse.y"
 
-  WORD_DESC *word;		/* the word that we read. */
-  int number;			/* the number that we read. */
-  WORD_LIST *word_list;
-  COMMAND *command;
-  REDIRECT *redirect;
-  ELEMENT element;
-  PATTERN_LIST *pattern;
+    WORD_DESC *word;		/* the word that we read. */
+    int number;			/* the number that we read. */
+    WORD_LIST *word_list;
+    COMMAND *command;
+    REDIRECT *redirect;
+    ELEMENT element;
+    PATTERN_LIST *pattern;
 
 #line 174 "y.tab.h"
 
